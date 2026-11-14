@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Recipe search tests</title></head>
+<body>
+<button data-page="recipe-discovery">Find Recipes</button>
+<form id="recipe-discovery-form">
+    <div id="discovery-protein"></div>
+    <div id="discovery-starch"></div>
+    <div id="discovery-vegetables"></div>
+    <input id="discovery-ingredients">
+    <select id="discovery-difficulty"><option value="">Any</option><option>Easy</option></select>
+    <select id="discovery-time"><option value="">Any</option><option value="30">30</option></select>
+</form>
+<p id="recipe-discovery-status"></p>
+<div id="recipe-discovery-results"></div>
+<pre id="result">Running...</pre>
+<script>
+    window.repository = {
+        getSimpleMealComponents: () => [],
+        getAllMeals: () => [
+            { id: 'a', name: 'Tempeh bowl', protein: 'Tempeh', categories: ['Protein'] },
+            { id: 'b', name: 'Chicken Tikka Masala Recipe', protein: 'Chicken', categories: ['Protein'] },
+            { id: 'c', name: 'Chilli Con Carne', protein: 'Beef', categories: ['Protein'] },
+            { id: 'd', name: 'Vegetable curry', protein: 'Vegan', categories: ['Protein'] }
+        ],
+        getMealCategories: item => item.categories
+    };
+    window.ui = {
+        createRecipeImage: ({ imageUrl }) => {
+            const image = document.createElement('img');
+            image.src = imageUrl;
+            return image;
+        },
+        createPhotoCredit: credit => document.createTextNode(credit.license)
+    };
+    let fail = false;
+    let delay = false;
+    let rejectDelayed;
+    window.fetch = async url => {
+        const request = new URL(url);
+        if (delay) return new Promise((resolve, reject) => { rejectDelayed = reject; });
+        if (fail) return { ok: false, status: 429 };
+        if (request.hostname === 'commons.wikimedia.org') {
+            return { ok: true, json: async () => ({ query: { pages: [] } }) };
+        }
+        if (request.pathname === '/api/v1/recipes') {
+            const selected = request.searchParams.get('ingredients');
+            if (!selected.includes('chicken') || !selected.includes('fish') || !selected.includes('garlic')) {
+                throw new Error('Options not sent');
+            }
+            return { ok: true, json: async () => ({ results: [
+                { slug: 'quick-fish', name: '20-Minute Fish', matched_ingredients: ['fish', 'rice', 'broccoli', 'garlic'] },
+                { slug: 'missing-rice', name: 'Chicken', matched_ingredients: ['chicken', 'broccoli'] },
+                { slug: 'unknown-time', name: 'Chicken and Rice', matched_ingredients: ['chicken', 'rice', 'broccoli', 'garlic'] },
+                { slug: 'missing-garlic', name: '25-Minute Chicken', matched_ingredients: ['chicken', 'rice', 'broccoli'] }
+            ] }) };
+        }
+        return { ok: true, json: async () => ({
+            directions: 'Mix ingredients. Cook until ready.',
+            ingredients: [{ text: '1 cup rice' }, { text: '1 cup broccoli' }]
+        }) };
+    };
+</script>
+<script src="../js/recipe-search.js"></script>
+<script>
+    window.addEventListener('DOMContentLoaded', async () => {
+        const assert = (condition, message) => { if (!condition) throw new Error(message); };
+        try {
+            assert(document.querySelector('#discovery-protein input[value="Tempeh"]'),
+                'Saved protein types should be offered as search options');
+            assert(!document.querySelector('#discovery-protein input[value="Chicken Tikka Masala Recipe"]') &&
+                !document.querySelector('#discovery-protein input[value="Chilli Con Carne"]') &&
+                !document.querySelector('#discovery-protein input[value="Vegan"]'),
+                'Recipe names and dietary labels must not appear as protein ingredients');
+            ['Chicken', 'Fish'].forEach(name => {
+                document.querySelector(`#discovery-protein input[value="${name}"]`).checked = true;
+            });
+            document.querySelector('#discovery-starch input[value="Rice"]').checked = true;
+            document.querySelector('#discovery-vegetables input[value="Broccoli"]').checked = true;
+            document.getElementById('discovery-ingredients').value = 'garlic';
+            document.getElementById('discovery-time').value = '30';
+            document.getElementById('discovery-difficulty').value = 'Easy';
+            await window.recipeDiscovery.search();
+            const cards = document.querySelectorAll('#recipe-discovery-results article');
+            assert(cards.length === 1 && cards[0].textContent.includes('20-Minute Fish'),
+                'Any selected protein should match, but starch, other ingredients and a known time are required');
+            assert(cards[0].textContent.includes('Easy (estimated from 2 instruction sentences)') &&
+                cards[0].querySelector('a').href === 'https://myplate.food/recipes/quick-fish',
+                'Results should show a labelled estimate and a source link');
+            assert(cards[0].textContent.includes('No suitable illustrative photo found.'),
+                'Missing photos should be explicit');
+            delay = true;
+            const staleSearch = window.recipeDiscovery.search();
+            delay = false;
+            fail = true;
+            await window.recipeDiscovery.search();
+            rejectDelayed(new Error('Outdated request failed'));
+            await staleSearch;
+            assert(document.getElementById('recipe-discovery-status').textContent.includes('rate limit'),
+                'API errors should be visible and stale requests must not replace them');
+            assert(!document.querySelector('#recipe-discovery-results article'), 'Stale results must be cleared');
+            document.getElementById('result').textContent = 'All recipe search tests passed.';
+        } catch (error) {
+            document.getElementById('result').textContent = `FAILED: ${error.message}`;
+            throw error;
+        }
+    });
+</script>
+</body>
+</html>

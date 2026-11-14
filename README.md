@@ -27,6 +27,7 @@ A lightweight, single-page web application for family meal planning with intelli
 
 ### Bonus Features
 - **Recipe Storage 📖** - Store detailed recipes with ingredients, instructions, ratings, images, and source links
+- **Find Recipes** - Search the MyPlate.food collection by ingredient, with linked results and estimated difficulty
 - **Partial Regeneration** - Regenerate just breakfast, lunch, dinner, or a specific day
 - **Custom Rules** - Create your own meal planning rules
 - **School Lunch Support** - Choose school lunch separately for each day in the weekly planner
@@ -128,6 +129,14 @@ To suggest ingredients and tags, enter a component name and click **Find ingredi
    - Tags
 
 Some websites also decline automated requests from the proxy, even if the page opens in a browser. If this happens, open the original link and enter the details manually. The proxy cannot guarantee access to every website.
+
+### Finding Online Recipes
+
+Open **Find Recipes** and select ingredients from Protein, Starch and Vegetables, or enter other ingredients. At least one choice in each selected group and every other ingredient must match. Search sends those terms to MyPlate.food, an independent service preserving the USDA MyPlate Kitchen collection. Its free API allows 20 requests per minute and 100 recipe-detail requests per day per IP. This searches that collection, not the entire web. Results are limited to the first 100 candidates and up to 10 detailed checks.
+
+Difficulty is an estimate based only on the number of instruction sentences (up to 3: Easy, 4–6: Medium, 7 or more: Hard); it is not a cooking assessment. Time is taken only from a recipe title that mentions minutes and may not include preparation. When a time filter is selected, recipes with no time in the title are excluded. Review the linked recipe before cooking.
+
+Recipe names are sent to Wikimedia Commons to look for freely licensed illustrative photos. The images may not depict the actual recipe, and their source, author and licence are shown. Some results may have no suitable image.
 
 ### Meal Component Options
 

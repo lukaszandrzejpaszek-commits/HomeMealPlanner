@@ -20,6 +20,7 @@
                 <li><button class="nav-btn active" data-page="planner">Planner</button></li>
                 <li><button class="nav-btn" data-page="meals">Meal Components</button></li>
                 <li><button class="nav-btn" data-page="recipes">Recipes 📖</button></li>
+                <li><button class="nav-btn" data-page="recipe-discovery">Find Recipes 🔎</button></li>
                 <li><button class="nav-btn" data-page="rules">Rules</button></li>
                 <li><button class="nav-btn" data-page="history">History</button></li>
                 <li><button class="nav-btn" data-page="shopping">Shopping List</button></li>
@@ -136,6 +137,58 @@
                 <div id="recipes-grid" class="meals-grid">
                     <!-- Recipe cards dynamically inserted -->
                 </div>
+            </section>
+
+            <section id="recipe-discovery-page" class="page">
+                <div class="page-header">
+                    <h2>Find Recipes</h2>
+                </div>
+                <p>Search the MyPlate.food recipe collection. Choose any options within each group; every selected group must match.</p>
+                <p class="recipe-discovery-note">Search terms are sent to MyPlate.food (20 requests per minute and 100 recipe-detail requests per day). Recipe names are sent to Wikimedia Commons to find illustrative photos, which may not show the actual recipe.</p>
+                <form id="recipe-discovery-form">
+                    <fieldset class="form-group checkbox-options">
+                        <legend>Protein</legend>
+                        <div id="discovery-protein" class="checkbox-options-grid"></div>
+                    </fieldset>
+                    <fieldset class="form-group checkbox-options">
+                        <legend>Starch</legend>
+                        <div id="discovery-starch" class="checkbox-options-grid"></div>
+                    </fieldset>
+                    <fieldset class="form-group checkbox-options">
+                        <legend>Vegetables</legend>
+                        <div id="discovery-vegetables" class="checkbox-options-grid"></div>
+                    </fieldset>
+                    <div class="form-group">
+                        <label for="discovery-ingredients">Other ingredients (comma-separated; all required):</label>
+                        <input type="text" id="discovery-ingredients" placeholder="e.g., garlic, onion">
+                    </div>
+                    <div class="recipe-discovery-filters">
+                        <div class="form-group">
+                            <label for="discovery-difficulty">Estimated difficulty:</label>
+                            <select id="discovery-difficulty">
+                                <option value="">Any</option>
+                                <option value="Easy">Easy</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Hard">Hard</option>
+                            </select>
+                            <small>Estimated from the number of instruction sentences, not a cooking assessment.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="discovery-time">Time mentioned in title:</label>
+                            <select id="discovery-time">
+                                <option value="">Any</option>
+                                <option value="30">Up to 30 minutes</option>
+                                <option value="45">Up to 45 minutes</option>
+                                <option value="60">Up to 60 minutes</option>
+                            </select>
+                            <small>Approximate; recipes without a time in the title are excluded when filtering.</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Search Recipes</button>
+                </form>
+                <p id="recipe-discovery-status" role="status" aria-live="polite"></p>
+                <div id="recipe-discovery-results" class="meals-grid"></div>
+                <p class="recipe-discovery-note">Recipes from the <a href="https://myplate.food/recipes" target="_blank" rel="noopener noreferrer">USDA MyPlate Kitchen collection, preserved at MyPlate.food</a>.</p>
             </section>
 
             <!-- Rules Page -->
@@ -534,5 +587,6 @@
     <script src="js/settings.js"></script>
     <script src="js/recipes.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/recipe-search.js"></script>
 </body>
 </html>

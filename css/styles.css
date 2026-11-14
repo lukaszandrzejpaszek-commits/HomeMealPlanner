@@ -516,6 +516,30 @@ body {
     gap: var(--spacing-lg);
 }
 
+.recipe-discovery-note {
+    margin: var(--spacing-md) 0;
+    color: var(--text-secondary);
+}
+
+.recipe-discovery-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.recipe-discovery-card {
+    cursor: default;
+    gap: var(--spacing-sm);
+}
+
+.recipe-discovery-card .recipe-card-image {
+    margin-bottom: 0;
+}
+
+#recipe-discovery-status {
+    margin: var(--spacing-lg) 0;
+}
+
 .meal-card {
     background-color: var(--bg-secondary);
     border-radius: var(--border-radius);
