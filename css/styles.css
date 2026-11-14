@@ -605,7 +605,25 @@ body {
 }
 
 .linked-recipes {
-    margin-bottom: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+    overflow-wrap: anywhere;
+}
+
+.linked-recipe-button {
+    display: block;
+    padding: var(--spacing-xs) 0;
+    border: 0;
+    background: transparent;
+    color: var(--primary-color);
+    font: inherit;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.linked-recipe-button:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
 }
 
 /* Rules List */

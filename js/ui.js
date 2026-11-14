@@ -266,6 +266,8 @@ class UIManager {
                     <div class="meal-info">${meal.cuisine} • ${meal.protein || 'N/A'}</div>
                 `;
                 mealItem.addEventListener('click', () => this.openMealPicker(dayIndex, mealType));
+                const recipeLinks = this.createLinkedRecipeLinks(meal.id);
+                if (recipeLinks) mealItem.appendChild(recipeLinks);
             }
 
             slot.appendChild(mealItem);
@@ -537,15 +539,31 @@ class UIManager {
             </div>
         `;
 
-        const linkedRecipes = window.recipeManager.getRecipesByMeal(meal.id);
-        if (linkedRecipes.length) {
-            const recipeNames = document.createElement('div');
-            recipeNames.className = 'meal-info linked-recipes';
-            recipeNames.textContent = `Recipes: ${linkedRecipes.map(recipe => recipe.name).join(', ')}`;
-            card.querySelector('.meal-card-actions').before(recipeNames);
-        }
+        const recipeLinks = this.createLinkedRecipeLinks(meal.id);
+        if (recipeLinks) card.querySelector('.meal-card-actions').before(recipeLinks);
 
         return card;
+    }
+
+    createLinkedRecipeLinks(mealId) {
+        const recipes = window.recipeManager.getRecipesByMeal(mealId);
+        if (!recipes.length) return null;
+
+        const links = document.createElement('div');
+        links.className = 'meal-info linked-recipes';
+        links.appendChild(document.createTextNode('Recipes: '));
+        recipes.forEach(recipe => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'linked-recipe-button';
+            button.textContent = recipe.name;
+            button.addEventListener('click', event => {
+                event.stopPropagation();
+                this.viewRecipe(recipe.id);
+            });
+            links.appendChild(button);
+        });
+        return links;
     }
 
     filterMeals() {

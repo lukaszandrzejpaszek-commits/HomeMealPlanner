@@ -109,6 +109,7 @@ HomeMealPlanner/
 3. Enter a recipe webpage URL and click **Load Recipe** to import Schema.org recipe details, including the image when provided. Review the preview and suggested category/protein before saving.
 4. Choose one or more recipe categories: Protein, Starch, Vegetables, or Dessert.
 5. To create a meal from the recipe, click **Create a new meal from this recipe**, choose one or more meal types, then save the meal. It is selected in **Connect to a meal**; save the recipe to keep the link.
+   Linked recipes can be opened from their meal on the Meals page or in the planner.
 6. If a site blocks direct browser access, use the local proxy or optional Cloudflare Worker described below.
 7. Fill or review recipe details:
    - Name
