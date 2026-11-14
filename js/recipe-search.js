@@ -4,8 +4,8 @@ class RecipeDiscovery {
         this.controller = null;
         this.groups = {
             protein: { category: 'Protein', defaults: ['Chicken', 'Beef', 'Pork', 'Fish', 'Turkey', 'Tofu', 'Beans', 'Eggs'] },
-            starch: { category: 'Starch', defaults: ['Rice', 'Pasta', 'Potatoes', 'Bread', 'Noodles'] },
-            vegetables: { category: 'Vegetables', defaults: ['Broccoli', 'Carrots', 'Tomatoes', 'Peppers', 'Zucchini', 'Spinach', 'Onion'] }
+            starch: { defaults: ['Rice', 'Pasta', 'Potatoes', 'Bread', 'Noodles', 'Corn', 'Oats', 'Tortillas'] },
+            vegetables: { defaults: ['Broccoli', 'Carrots', 'Tomatoes', 'Peppers', 'Zucchini', 'Spinach', 'Onion', 'Cabbage', 'Cauliflower', 'Mushrooms'] }
         };
     }
 
@@ -25,13 +25,11 @@ class RecipeDiscovery {
             const selected = new Set(Array.from(container.querySelectorAll('input:checked'))
                 .map(input => input.value.toLowerCase()));
             const names = new Map();
-            const categoryComponents = components.filter(item =>
-                window.repository.getMealCategories(item).includes(group.category)
-            );
             const savedOptions = key === 'protein'
-                ? categoryComponents.map(item => item.protein).filter(value =>
+                ? components.filter(item => window.repository.getMealCategories(item).includes(group.category))
+                    .map(item => item.protein).filter(value =>
                     typeof value === 'string' && !['vegan', 'vegetarian', 'other', 'n/a'].includes(value.trim().toLowerCase()))
-                : categoryComponents.map(item => item.name);
+                : [];
             [...group.defaults, ...savedOptions].forEach(name => {
                 if (typeof name === 'string' && name.trim()) names.set(name.trim().toLowerCase(), name.trim());
             });
@@ -72,8 +70,10 @@ class RecipeDiscovery {
         const other = document.getElementById('discovery-ingredients').value.split(',')
             .map(value => value.trim().toLowerCase()).filter(Boolean);
         const ingredients = [...new Set([...groups.flat(), ...other])];
-        if (!ingredients.length || ingredients.length > 20 || ingredients.some(value => value.length > 80 || value.includes(','))) {
-            status.textContent = 'Select or enter 1 to 20 ingredients, each no longer than 80 characters.';
+        const cuisine = document.getElementById('discovery-cuisine').value.trim();
+        if ((!ingredients.length && !cuisine) || ingredients.length > 20 ||
+            ingredients.some(value => value.length > 80 || value.includes(',')) || cuisine.length > 80) {
+            status.textContent = 'Enter a cuisine keyword or select up to 20 ingredients; each term must be no longer than 80 characters.';
             this.controller = null;
             return;
         }
@@ -81,13 +81,16 @@ class RecipeDiscovery {
         const difficulty = document.getElementById('discovery-difficulty').value;
         status.textContent = 'Searching MyPlate.food...';
         try {
-            const params = new URLSearchParams({ ingredients: ingredients.join(','), limit: '100' });
+            const params = new URLSearchParams({ limit: '100' });
+            if (ingredients.length) params.set('ingredients', ingredients.join(','));
+            if (cuisine) params.set('q', cuisine);
             const data = await this.getJson(`https://myplate.food/api/v1/recipes?${params}`, controller.signal);
             if (!Array.isArray(data.results)) throw new Error('The recipe service returned an unexpected response.');
             const candidates = data.results.filter(item => {
-                if (!Array.isArray(item.matched_ingredients) || typeof item.slug !== 'string' ||
+                if ((ingredients.length && !Array.isArray(item.matched_ingredients)) || typeof item.slug !== 'string' ||
                     !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.slug) || typeof item.name !== 'string') return false;
-                const matched = new Set(item.matched_ingredients.map(value => String(value).trim().toLowerCase()));
+                const matched = new Set((Array.isArray(item.matched_ingredients) ? item.matched_ingredients : [])
+                    .map(value => String(value).trim().toLowerCase()));
                 const time = this.timeFromTitle(item.name);
                 return groups.every(group => !group.length || group.some(value => matched.has(value))) &&
                     other.every(value => matched.has(value)) && (!maxTime || (time !== null && time <= maxTime));

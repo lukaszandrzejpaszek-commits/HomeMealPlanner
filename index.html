@@ -159,6 +159,17 @@
                         <div id="discovery-vegetables" class="checkbox-options-grid"></div>
                     </fieldset>
                     <div class="form-group">
+                        <label for="discovery-cuisine">Cuisine keyword (optional):</label>
+                        <input type="text" id="discovery-cuisine" list="discovery-cuisine-options" maxlength="80" placeholder="e.g., Italian">
+                        <datalist id="discovery-cuisine-options">
+                            <option value="Chinese"><option value="Danish"><option value="French">
+                            <option value="Greek"><option value="Indian"><option value="Italian">
+                            <option value="Japanese"><option value="Mediterranean"><option value="Mexican">
+                            <option value="Polish"><option value="Thai">
+                        </datalist>
+                        <small>Matches the keyword in recipe titles or descriptions, not an official cuisine classification. Some relevant recipes may be missed.</small>
+                    </div>
+                    <div class="form-group">
                         <label for="discovery-ingredients">Other ingredients (comma-separated; all required):</label>
                         <input type="text" id="discovery-ingredients" placeholder="e.g., garlic, onion">
                     </div>

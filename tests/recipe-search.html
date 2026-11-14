@@ -7,6 +7,7 @@
     <div id="discovery-protein"></div>
     <div id="discovery-starch"></div>
     <div id="discovery-vegetables"></div>
+    <input id="discovery-cuisine">
     <input id="discovery-ingredients">
     <select id="discovery-difficulty"><option value="">Any</option><option>Easy</option></select>
     <select id="discovery-time"><option value="">Any</option><option value="30">30</option></select>
@@ -21,7 +22,9 @@
             { id: 'a', name: 'Tempeh bowl', protein: 'Tempeh', categories: ['Protein'] },
             { id: 'b', name: 'Chicken Tikka Masala Recipe', protein: 'Chicken', categories: ['Protein'] },
             { id: 'c', name: 'Chilli Con Carne', protein: 'Beef', categories: ['Protein'] },
-            { id: 'd', name: 'Vegetable curry', protein: 'Vegan', categories: ['Protein'] }
+            { id: 'd', name: 'Vegetable curry', protein: 'Vegan', categories: ['Protein'] },
+            { id: 'e', name: 'Creamy Garlic Pasta', categories: ['Starch'] },
+            { id: 'f', name: 'Roasted Vegetable Medley', categories: ['Vegetables'] }
         ],
         getMealCategories: item => item.categories
     };
@@ -36,6 +39,7 @@
     let fail = false;
     let delay = false;
     let rejectDelayed;
+    let lastSearch;
     window.fetch = async url => {
         const request = new URL(url);
         if (delay) return new Promise((resolve, reject) => { rejectDelayed = reject; });
@@ -44,7 +48,13 @@
             return { ok: true, json: async () => ({ query: { pages: [] } }) };
         }
         if (request.pathname === '/api/v1/recipes') {
+            lastSearch = request.searchParams;
             const selected = request.searchParams.get('ingredients');
+            if (!selected) {
+                return { ok: true, json: async () => ({ results: [
+                    { slug: 'italian-soup', name: 'Italian Soup' }
+                ] }) };
+            }
             if (!selected.includes('chicken') || !selected.includes('fish') || !selected.includes('garlic')) {
                 throw new Error('Options not sent');
             }
@@ -72,6 +82,11 @@
                 !document.querySelector('#discovery-protein input[value="Chilli Con Carne"]') &&
                 !document.querySelector('#discovery-protein input[value="Vegan"]'),
                 'Recipe names and dietary labels must not appear as protein ingredients');
+            assert(document.querySelector('#discovery-starch input[value="Pasta"]') &&
+                document.querySelector('#discovery-vegetables input[value="Broccoli"]') &&
+                !document.querySelector('#discovery-starch input[value="Creamy Garlic Pasta"]') &&
+                !document.querySelector('#discovery-vegetables input[value="Roasted Vegetable Medley"]'),
+                'Starch and vegetable choices should be ingredients, not saved dishes');
             ['Chicken', 'Fish'].forEach(name => {
                 document.querySelector(`#discovery-protein input[value="${name}"]`).checked = true;
             });
@@ -89,6 +104,25 @@
                 'Results should show a labelled estimate and a source link');
             assert(cards[0].textContent.includes('No suitable illustrative photo found.'),
                 'Missing photos should be explicit');
+            assert(!lastSearch.has('q'), 'Search without a cuisine should not send a keyword');
+            document.getElementById('discovery-cuisine').value = 'Italian';
+            await window.recipeDiscovery.search();
+            assert(lastSearch.get('q') === 'Italian' && lastSearch.has('ingredients') &&
+                document.querySelectorAll('#recipe-discovery-results article').length === 1,
+                'Cuisine keywords should combine with ingredient filters');
+            document.querySelectorAll('#recipe-discovery-form input:checked').forEach(input => { input.checked = false; });
+            document.getElementById('discovery-ingredients').value = '';
+            document.getElementById('discovery-time').value = '';
+            document.getElementById('discovery-difficulty').value = '';
+            await window.recipeDiscovery.search();
+            assert(lastSearch.get('q') === 'Italian' && !lastSearch.has('ingredients') &&
+                document.querySelector('#recipe-discovery-results article').textContent.includes('Italian Soup'),
+                'Cuisine-only searches should accept results without matched ingredients');
+            document.getElementById('discovery-cuisine').value = '';
+            await window.recipeDiscovery.search();
+            assert(document.getElementById('recipe-discovery-status').textContent.includes('Enter a cuisine keyword'),
+                'A search without cuisine or ingredients should be rejected');
+            document.getElementById('discovery-cuisine').value = 'Italian';
             delay = true;
             const staleSearch = window.recipeDiscovery.search();
             delay = false;

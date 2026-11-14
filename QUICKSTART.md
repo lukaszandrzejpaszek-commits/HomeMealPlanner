@@ -61,7 +61,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 
 ### Recipes (Bonus!)
 - **Add recipe**: Go to Recipes > + Add Recipe
-- **Find online recipes**: Open Find Recipes, choose ingredients and search the MyPlate.food collection. Difficulty and title-based times are approximate; recipes without a time in the title are excluded by the time filter. Photos from Wikimedia Commons are illustrative, not necessarily the actual dish.
+- **Find online recipes**: Open Find Recipes, choose ingredients or a cuisine keyword and search the MyPlate.food collection. Cuisine matches titles and descriptions, not official cuisine labels. Difficulty and title-based times are approximate; recipes without a time in the title are excluded by the time filter. Photos from Wikimedia Commons are illustrative, not necessarily the actual dish.
 - **Import from a link**: Load recipe details and review ingredients, steps, image, category, and protein suggestion before saving
 - **Link a recipe**: Choose a component under **Connect to a meal component**, or click **Create a component from this recipe**. Save the recipe to keep the link.
 - **Recipe categories**: Select any combination of Breakfast, Protein, Starch, Fruit, Vegetables, and Dessert
