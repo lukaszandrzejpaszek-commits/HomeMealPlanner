@@ -309,7 +309,7 @@ body {
 
 .week-view {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(max(300px, calc(25% - var(--spacing-lg))), 1fr));
     gap: var(--spacing-lg);
 }
 
