@@ -13,6 +13,7 @@ class SettingsManager {
         return {
             cookForDays: 2,
             historyWeeksToAvoid: 4,
+            planningStartDay: 'Monday',
             darkMode: false,
             recipeProxyUrl: ''
         };

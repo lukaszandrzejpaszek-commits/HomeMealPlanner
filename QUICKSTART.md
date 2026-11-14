@@ -11,23 +11,17 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 
 ## 📋 First Time Setup (5 minutes)
 
-### Step 1: Add Some Meals
-1. Click **Meals** in the navigation
-2. Click **+ Add Meal** button
-3. Fill in a few meals:
-   - Name: "Spaghetti Carbonara"
-   - Type: Dinner
-   - Cuisine: Italian
-   - Protein: Pork
-   - Difficulty: Easy
-   - Ingredients: Pasta, Pork, Eggs, Cheese
-   - Food Groups: Pasta, Protein, Dairy
-
-4. Add 2-3 more meals (different types and cuisines)
+### Step 1: Add Meal Components
+1. Click **Meal Components** in the navigation.
+2. Click **+ Add Component** and assign a category, for example Protein for chicken, Starch for rice, Fruit for an apple, or Vegetables for broccoli.
+3. Choose the meal types for each component and add more options for variety.
+4. Link a recipe to a component on the **Recipes** page, if desired.
+5. To add a photo, enter an image URL or click **Find photos** and select a Wikimedia Commons result. Searching sends your search terms to Wikimedia Commons. A linked recipe photo is shown if no component photo is set.
+6. To suggest ingredients and tags, click **Find ingredients and tags**, select a Wikidata match and review it before adding. The component name is sent to Wikidata; existing entries are kept.
 
 ### Step 2: Generate Your First Week Plan
 1. Click **Planner** in the navigation
-2. Select the week to plan; its week number and date range are shown
+2. Select the ISO week containing the start date; its seven-day date range is shown
 3. Click **🎲 Generate Week**
 4. Watch the algorithm create an optimal plan!
 
@@ -43,22 +37,22 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 
 ## 🎮 Features to Try
 
-### Meal Management
-- **Edit meal**: Click "Edit" on any meal card
-- **Delete meal**: Click "Delete" on any meal card
-- **Search**: Use the search box to find meals
+### Component Management
+- **Edit component**: Click "Edit" on a component
+- **Delete component**: Click "Delete" on a component card
+- **Search**: Use the search box to find detailed components
 - **Filter**: Filter by type or cuisine
 
 ### Planning
-- **Replace a meal**: Click on any meal in the week view to pick a different one
+- **View or replace a component**: Click a planned component to see its recipes, or its **+** button to choose another
 - **Regenerate day**: Generate plan > Regenerate individual meals
 - **School lunch**: Choose school lunch separately on each day in the planner
 - **Future week**: Select a later week to generate and save a separate plan
-- **Meal components**: On Meals, add proteins, starches, and vegetables in separate columns. Generated plans can combine one item from each or use saved complete meals; school lunches are skipped.
-- **Multiple meal types**: Assign a saved meal to any combination of breakfast, lunch, and dinner.
+- **Meal components**: Breakfast combines protein, starch and fruit; lunch and dinner combine protein, starch and vegetables. Use the three **+** buttons to fill a row manually; manual choices can override repeat rules.
+- **Multiple meal types**: Assign a component to any combination of breakfast, lunch, and dinner.
 - **Adjust rules**: Go to Rules page and toggle rules on/off or change strength
-- **Avoid consecutive meals**: When enabled above zero, the planner leaves slots empty rather than repeating, except for meal prep up to its configured days.
-- **Avoid same-day repeats**: When enabled above zero, the same meal cannot be generated twice on one day.
+- **Avoid consecutive meals**: When enabled above zero, the planner leaves slots empty rather than repeating an item, except for meal prep up to its configured days.
+- **Avoid same-day repeats**: When enabled above zero, an item cannot appear in two meal slots on one day.
 
 ### Shopping
 - **Mark purchased**: Check off items as you shop
@@ -68,9 +62,10 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 ### Recipes (Bonus!)
 - **Add recipe**: Go to Recipes > + Add Recipe
 - **Import from a link**: Load recipe details and review ingredients, steps, image, category, and protein suggestion before saving
-- **Create a meal**: Click **Create a new meal from this recipe**, select one or more meal types, and save; then save the recipe to keep the link
-- **Recipe categories**: Select any combination of Protein, Starch, Vegetables, and Dessert
+- **Link a recipe**: Choose a component under **Connect to a meal component**, or click **Create a component from this recipe**. Save the recipe to keep the link.
+- **Recipe categories**: Select any combination of Protein, Starch, Fruit, Vegetables, and Dessert
 - **Blocked recipe sites**: For the locally opened app, double-click `start-local-proxy.bat` and leave it running. For the HTTPS site, deploy the optional Cloudflare Worker from `worker/` and save its URL in **Settings > Recipe import proxy URL**.
+- **Website refuses the proxy**: Open the recipe in your browser and enter its details manually; some sites do not allow automated imports.
 - **Fill in**: Name, time, servings, ingredients, instructions
 - **Rate**: Use stars to rate your favorite recipes
 - **View**: Click "View" to see full recipe
@@ -88,6 +83,7 @@ Examples:
 - Max 2 beef meals per week
 
 ### Settings
+- Choose the planning start day; Saturday plans run Saturday through Friday. Changing it opens a separate period without deleting existing plans.
 - Cook for X days
 - History weeks to avoid
 - Optional HTTPS recipe import proxy URL
@@ -122,7 +118,7 @@ Examples:
 
 ### What Gets Stored
 All data stored in browser localStorage:
-- **Meals** - Your meal definitions
+- **Meal Components** - Your reusable component definitions
 - **Recipes** - Your stored recipes
 - **Current Week** - This week's plan
 - **History** - Approved previous plans
@@ -160,15 +156,15 @@ All data stored in browser localStorage:
 - Try different browser
 - Check if in private/incognito mode
 
-### Meals Not Appearing
+### Components Not Appearing
 - Refresh page
-- Check Meals page to verify they're saved
-- Try adding a new meal
+- Check the Meal Components page to verify they're saved and categorized
+- Try adding a new component
 
 ### Plan Looking Off
 - Try regenerating individual meal types
 - Check rule settings
-- Ensure you have enough meal variety
+- Ensure you have enough component variety
 
 ### Performance Issues
 - Try clearing browser cache
@@ -177,8 +173,8 @@ All data stored in browser localStorage:
 
 ## 💡 Pro Tips
 
-1. **Build variety** - Add 15-20 meals per type for better planning
-2. **Use tags** - Tag meals to organize (e.g., "Quick", "Family Favorite")
+1. **Build variety** - Add components in every category for each desired meal type
+2. **Use tags** - Tag components to organize (e.g., "Quick", "Family Favorite")
 3. **Adjust rules gradually** - Start strong, relax if too restrictive
 4. **Review before approving** - Edit meals before approval
 5. **Backup regularly** - Download backup weekly

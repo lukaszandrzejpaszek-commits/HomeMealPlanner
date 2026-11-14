@@ -11,7 +11,7 @@ class HistoryManager {
 
     getHistoryList() {
         const history = this.getAllHistory();
-        return Object.values(history)
+        return Object.entries(history).map(([key, item]) => ({ ...item, key }))
             .sort((a, b) => {
                 const aDate = new Date(a.approvedDate);
                 const bDate = new Date(b.approvedDate);
@@ -49,8 +49,8 @@ class HistoryManager {
         });
     }
 
-    copyHistoryToCurrent(weekNumber, year) {
-        const historyWeek = this.getHistoryWeek(weekNumber, year);
+    copyHistoryToCurrent(key) {
+        const historyWeek = this.getAllHistory()[key];
         if (!historyWeek) {
             return false;
         }

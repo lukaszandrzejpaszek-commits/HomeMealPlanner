@@ -18,7 +18,7 @@
             </div>
             <ul class="nav-links">
                 <li><button class="nav-btn active" data-page="planner">Planner</button></li>
-                <li><button class="nav-btn" data-page="meals">Meals</button></li>
+                <li><button class="nav-btn" data-page="meals">Meal Components</button></li>
                 <li><button class="nav-btn" data-page="recipes">Recipes 📖</button></li>
                 <li><button class="nav-btn" data-page="rules">Rules</button></li>
                 <li><button class="nav-btn" data-page="history">History</button></li>
@@ -34,7 +34,7 @@
                 <div class="page-header">
                     <h2>Weekly Meal Planner</h2>
                     <div class="header-actions">
-                        <label class="week-select-label" for="week-selector">Plan week</label>
+                        <label class="week-select-label" for="week-selector">ISO week of start date</label>
                         <input id="week-selector" class="week-selector" type="week" aria-label="Select plan week">
                         <span id="week-display" class="week-display"></span>
                         <button id="btn-generate-week" class="btn btn-primary"><span aria-hidden="true">🎲</span> Generate Week</button>
@@ -76,49 +76,22 @@
             <!-- Meals Page -->
             <section id="meals-page" class="page">
                 <div class="page-header">
-                    <h2>Meal Repository</h2>
-                    <button id="btn-add-meal" class="btn btn-primary">+ Add Meal</button>
+                    <h2>Meal Components</h2>
+                    <button id="btn-add-meal" class="btn btn-primary">+ Add Component</button>
                 </div>
 
-                <div class="meal-components-panel">
-                    <h3>Meal components</h3>
-                    <p>Add choices in all three columns. Each generated breakfast, lunch, and dinner will combine one protein, one starch, and one vegetable. School lunches are not generated.</p>
-                    <div class="meal-components-grid">
-                        <section class="meal-component-column" aria-labelledby="meal-proteins-heading">
-                            <h4 id="meal-proteins-heading">Proteins</h4>
-                            <form class="meal-component-form" data-category="proteins">
-                                <input type="text" aria-label="Add a protein" placeholder="e.g. Chicken" required>
-                                <button type="submit" class="btn btn-primary btn-sm">Add</button>
-                            </form>
-                            <ul id="meal-component-proteins" class="meal-component-items"></ul>
-                        </section>
-                        <section class="meal-component-column" aria-labelledby="meal-starches-heading">
-                            <h4 id="meal-starches-heading">Starch</h4>
-                            <form class="meal-component-form" data-category="starches">
-                                <input type="text" aria-label="Add a starch" placeholder="e.g. Rice" required>
-                                <button type="submit" class="btn btn-primary btn-sm">Add</button>
-                            </form>
-                            <ul id="meal-component-starches" class="meal-component-items"></ul>
-                        </section>
-                        <section class="meal-component-column" aria-labelledby="meal-vegetables-heading">
-                            <h4 id="meal-vegetables-heading">Vegetables</h4>
-                            <form class="meal-component-form" data-category="vegetables">
-                                <input type="text" aria-label="Add a vegetable" placeholder="e.g. Broccoli" required>
-                                <button type="submit" class="btn btn-primary btn-sm">Add</button>
-                            </form>
-                            <ul id="meal-component-vegetables" class="meal-component-items"></ul>
-                        </section>
-                    </div>
-                    <div class="meal-components-actions">
-                        <span id="meal-components-status" role="status" aria-live="polite"></span>
-                    </div>
-                </div>
-
-                <h3 class="meal-list-heading">Saved complete meals</h3>
+                <p class="meal-components-intro">Add reusable components and assign their categories. Breakfast combines protein, starch and fruit; lunch and dinner combine protein, starch and vegetables. Recipes are linked to components.</p>
 
                 <!-- Search and Filter -->
                 <div class="search-filter">
-                    <input type="text" id="meal-search" placeholder="Search meals..." class="search-input">
+                    <input type="text" id="meal-search" placeholder="Search components..." class="search-input">
+                    <select id="meal-filter-category" class="filter-select" aria-label="Filter by component category">
+                        <option value="">All Categories</option>
+                        <option value="Protein">Protein</option>
+                        <option value="Starch">Starch</option>
+                        <option value="Fruit">Fruit</option>
+                        <option value="Vegetables">Vegetables</option>
+                    </select>
                     <select id="meal-filter-type" class="filter-select">
                         <option value="">All Types</option>
                         <option value="Breakfast">Breakfast</option>
@@ -214,6 +187,19 @@
 
                 <div class="settings-form">
                     <div class="setting-group">
+                        <label for="planning-start-day">Planning week starts on:</label>
+                        <select id="planning-start-day">
+                            <option>Monday</option>
+                            <option>Tuesday</option>
+                            <option>Wednesday</option>
+                            <option>Thursday</option>
+                            <option>Friday</option>
+                            <option>Saturday</option>
+                            <option>Sunday</option>
+                        </select>
+                        <small>Each plan covers seven days. Changing the start day opens a separate period; existing plans are kept.</small>
+                    </div>
+                    <div class="setting-group">
                         <label for="cook-for-days">Cook Meals For (days):</label>
                         <input type="number" id="cook-for-days" min="1" max="7" value="2">
                     </div>
@@ -235,8 +221,9 @@
                     </div>
 
                     <div class="setting-group">
-                        <button id="btn-export-meals" class="btn btn-secondary">Export Meals</button>
-                        <button id="btn-import-meals" class="btn btn-secondary">Import Meals</button>
+                        <button id="btn-export-meals" class="btn btn-secondary">Export Component Details</button>
+                        <button id="btn-import-meals" class="btn btn-secondary">Import Component Details</button>
+                        <small>Use Backup Data to include older simple components. Import replaces saved component details.</small>
                     </div>
 
                     <div class="setting-group">
@@ -253,11 +240,31 @@
     <div id="meal-modal" class="modal">
         <div class="modal-content">
             <span class="close-modal">&times;</span>
-            <h2 id="meal-modal-title">Add Meal</h2>
+            <h2 id="meal-modal-title">Add Component</h2>
             <form id="meal-form">
                 <div class="form-group">
-                    <label for="meal-name">Meal Name:</label>
+                    <label for="meal-name">Component Name:</label>
                     <input type="text" id="meal-name" required>
+                    <button type="button" id="btn-find-component-info" class="btn btn-secondary">Find ingredients and tags</button>
+                    <small>Searches Wikidata using the component name. Choose the correct food and review suggestions; results may be incomplete or inaccurate.</small>
+                    <div id="component-info-status" role="status" aria-live="polite"></div>
+                    <div id="component-info-results" class="component-info-results"></div>
+                    <div id="component-info-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-image-url">Component photo URL (optional):</label>
+                    <input type="url" id="meal-image-url" placeholder="https://example.com/photo.jpg">
+                    <small>Use an image you have permission to display, or search Wikimedia Commons below. A linked recipe photo is used when no component photo is set.</small>
+                    <div id="component-photo-preview"></div>
+                    <div class="component-photo-search">
+                        <input type="text" id="meal-photo-query" aria-label="Photo search terms" placeholder="Photo search terms (defaults to component name)">
+                        <button type="button" id="btn-search-component-photo" class="btn btn-secondary">Find photos</button>
+                    </div>
+                    <small>Searching sends the search terms to Wikimedia Commons.</small>
+                    <div id="component-photo-status" role="status" aria-live="polite"></div>
+                    <div id="component-photo-results" class="component-photo-results"></div>
+                    <div id="component-photo-credit"></div>
                 </div>
 
                 <fieldset class="form-group checkbox-options">
@@ -270,13 +277,24 @@
                     <small>Select at least one meal type.</small>
                 </fieldset>
 
+                <fieldset class="form-group checkbox-options">
+                    <legend>Categories (select all that apply):</legend>
+                    <div class="checkbox-options-grid">
+                        <label><input type="checkbox" name="meal-category" value="Protein"> 🍗 Protein</label>
+                        <label><input type="checkbox" name="meal-category" value="Starch"> 🍚 Starch</label>
+                        <label><input type="checkbox" name="meal-category" value="Fruit"> 🍎 Fruit</label>
+                        <label><input type="checkbox" name="meal-category" value="Vegetables"> 🥦 Vegetables</label>
+                    </div>
+                    <small>Choose at least one category for planning. Linked recipe categories are also included; edit the recipe to change them.</small>
+                </fieldset>
+
                 <div class="form-group">
                     <label for="meal-cuisine">Cuisine:</label>
                     <input type="text" id="meal-cuisine" placeholder="e.g., Italian">
                 </div>
 
-                <div class="form-group">
-                    <label for="meal-protein">Protein:</label>
+                <div class="form-group" id="meal-protein-group" hidden>
+                    <label for="meal-protein">Protein type (optional):</label>
                     <select id="meal-protein">
                         <option value="">Select or Enter</option>
                         <option value="Chicken">Chicken</option>
@@ -327,7 +345,7 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Save Meal</button>
+                    <button type="submit" class="btn btn-primary">Save Component</button>
                     <button type="button" id="btn-cancel-meal" class="btn btn-secondary">Cancel</button>
                 </div>
             </form>
@@ -363,15 +381,15 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="recipe-meal-link">Connect to a meal:</label>
+                    <label for="recipe-meal-link">Connect to a meal component:</label>
                     <select id="recipe-meal-link">
-                        <option value="">Not linked to a meal</option>
+                        <option value="">Not linked to a component</option>
                     </select>
                 </div>
 
                 <div class="form-group" id="recipe-create-meal-group" hidden>
-                    <button type="button" id="btn-create-meal-from-recipe" class="btn btn-secondary">Create a new meal from this recipe</button>
-                    <small class="recipe-import-help">Opens a pre-filled meal form. Choose its type and save to link it to this recipe.</small>
+                    <button type="button" id="btn-create-meal-from-recipe" class="btn btn-secondary">Create a component from this recipe</button>
+                    <small class="recipe-import-help">Opens a pre-filled component form. Choose its meal types and save to link it to this recipe.</small>
                 </div>
 
                 <div class="form-group">
@@ -384,6 +402,7 @@
                     <div class="checkbox-options-grid">
                         <label><input type="checkbox" name="recipe-category" value="Protein"> Protein</label>
                         <label><input type="checkbox" name="recipe-category" value="Starch"> Starch</label>
+                        <label><input type="checkbox" name="recipe-category" value="Fruit"> Fruit</label>
                         <label><input type="checkbox" name="recipe-category" value="Vegetables"> Vegetables</label>
                         <label><input type="checkbox" name="recipe-category" value="Dessert"> Dessert</label>
                     </div>
@@ -466,19 +485,22 @@
         </div>
     </div>
 
+    <!-- Recipe View Modal -->
+    <div id="recipe-view-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="recipe-view-title">
+        <div class="modal-content">
+            <button type="button" class="close-modal recipe-view-close" aria-label="Close recipe details">&times;</button>
+            <h2 id="recipe-view-title">Recipe details</h2>
+            <div id="recipe-view-content"></div>
+        </div>
+    </div>
+
     <!-- Meal Picker Modal -->
     <div id="meal-picker-modal" class="modal">
         <div class="modal-content">
             <span class="close-modal">&times;</span>
-            <h2>Select Meal</h2>
+            <h2 id="meal-picker-title">Select Component</h2>
             <div class="meal-picker-controls">
-                <input type="text" id="picker-search" placeholder="Search meals..." class="search-input">
-                <select id="picker-type-filter" class="filter-select">
-                    <option value="">All Types</option>
-                    <option value="Breakfast">Breakfast</option>
-                    <option value="Lunch">Lunch</option>
-                    <option value="Dinner">Dinner</option>
-                </select>
+                <input type="text" id="picker-search" placeholder="Search components..." class="search-input" aria-label="Search components">
             </div>
             <div id="meal-picker-list" class="meal-picker-list">
                 <!-- Meals dynamically inserted -->

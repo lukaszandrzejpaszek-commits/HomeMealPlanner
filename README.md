@@ -7,7 +7,9 @@ A lightweight, single-page web application for family meal planning with intelli
 ### Core Features
 - **Weekly Meal Planning** - Automatically generate optimal meal plans for breakfast, lunch, and dinner
 - **Future Week Planning** - Select, generate, and revisit separate plans with week numbers and date ranges
-- **Meal Repository** - Store and organize meals with detailed metadata
+- **Planning Start Day** - Choose which day begins each seven-day planning period
+- **Meal Components** - Store reusable protein, starch, fruit, and vegetable components with optional recipes and detailed metadata
+- **Component Photos** - Show linked recipe photos or choose a separate component photo by URL or Wikimedia Commons search
 - **Smart Rule Engine** - 8 customizable planning rules to optimize meal selection:
   - Avoid identical meals on consecutive days
   - Avoid same food group for lunch and dinner
@@ -29,10 +31,10 @@ A lightweight, single-page web application for family meal planning with intelli
 - **Custom Rules** - Create your own meal planning rules
 - **School Lunch Support** - Choose school lunch separately for each day in the weekly planner
 - **Settings** - Customize meal planning parameters
-- **Export/Import** - Export meals and recipes as JSON
-- **Meal Components** - Manage proteins, starches, and vegetables in separate columns; generated meals combine one item from each (school lunches are skipped). Saved complete meals are also planning candidates.
-- **Multi-Type Meals** - Make a saved meal available for any combination of breakfast, lunch, and dinner
-- **Recipe-to-Meal** - Create a meal prefilled from a saved recipe, with an editable protein suggestion
+- **Export/Import** - Export component details and recipes as JSON
+- **Component Combinations** - Breakfast combines protein, starch and fruit; lunch and dinner combine protein, starch and vegetables (school lunches are skipped).
+- **Multi-Type Components** - Make a component available for any combination of breakfast, lunch, and dinner
+- **Recipe-to-Component** - Create a component prefilled from a recipe, with an editable protein suggestion
 - **Optional Recipe Proxy** - Use a Cloudflare Worker to fetch recipe pages from domains that block direct browser access
 
 ## Technology Stack
@@ -80,18 +82,18 @@ HomeMealPlanner/
 ### Getting Started
 
 1. Open `index.html` in a modern web browser
-2. Start by adding meals to your repository
+2. Add reusable components to your repository
 3. Adjust planning rules to match your preferences
 4. Generate a weekly meal plan
 5. Review and approve the plan
 6. Generate shopping list
 7. Cook and enjoy!
 
-### Adding Meals
+### Adding Meal Components
 
-1. Go to **Meals** page
-2. Click **+ Add Meal**
-3. Fill in meal details:
+1. Go to **Meal Components**.
+2. Click **+ Add Component** and select its categories.
+3. Fill in component details:
    - Name
    - Meal types (select any combination of Breakfast, Lunch, Dinner)
    - Cuisine
@@ -102,14 +104,18 @@ HomeMealPlanner/
    - Food groups
    - Tags
 
+For a photo, enter an image URL or click **Find photos** and choose a Wikimedia Commons result. Search sends the entered search terms (or component name) to Wikimedia Commons and requires internet access; credits and license links are retained. Use images you have permission to display. If no component photo is set, a linked recipe photo is shown. Protein type is optional and appears only for protein components.
+
+To suggest ingredients and tags, enter a component name and click **Find ingredients and tags**. The name is sent to Wikidata. Select the correct match, review the suggestions, and click **Add suggestions**; existing entries are retained. Wikidata ingredient statements may be incomplete or not match your recipe, so check them before use.
+
 ### Adding Recipes
 
 1. Go to **Recipes** page
 2. Click **+ Add Recipe**
 3. Enter a recipe webpage URL and click **Load Recipe** to import Schema.org recipe details, including the image when provided. Review the preview and suggested category/protein before saving.
-4. Choose one or more recipe categories: Protein, Starch, Vegetables, or Dessert.
-5. To create a meal from the recipe, click **Create a new meal from this recipe**, choose one or more meal types, then save the meal. It is selected in **Connect to a meal**; save the recipe to keep the link.
-   Linked recipes can be opened from their meal on the Meals page or in the planner.
+4. Choose one or more recipe categories: Protein, Starch, Fruit, Vegetables, or Dessert.
+5. Select an existing component in **Connect to a meal component**, or click **Create a component from this recipe**, choose meal types and save it. Save the recipe to keep the link.
+   Open linked recipes from a component's details or by clicking the component in the planner. The planner shows a linked recipe's photo when available; use the **+** button for a category to add or change that component.
 6. If a site blocks direct browser access, use the local proxy or optional Cloudflare Worker described below.
 7. Fill or review recipe details:
    - Name
@@ -121,9 +127,11 @@ HomeMealPlanner/
    - Notes
    - Tags
 
+Some websites also decline automated requests from the proxy, even if the page opens in a browser. If this happens, open the original link and enter the details manually. The proxy cannot guarantee access to every website.
+
 ### Meal Component Options
 
-On the **Meals** page, save lists of proteins, starches, and vegetables. Once all three lists have at least one option, generated plans can use combinations with one item from each list, as well as saved complete meals. Each saved meal can be assigned to any combination of breakfast, lunch, and dinner.
+On the **Meal Components** page, add reusable components and assign their categories. A generated breakfast contains protein, starch and fruit; lunch and dinner contain protein, starch and vegetables. The planner displays separate slots with category icons and linked recipe photos. Use each slot's **+** button to add or change that component, even before the other slots are filled. Manual choices can override repetition rules. A component in multiple categories may fill multiple places in the same meal. Choose the meal types for which each component is available. Previously added simple components remain available for all meal types and can be edited. Recipes can be linked to any component. Uncategorized components remain saved but are not used in generation. **Export Component Details** exports detailed components; use **Backup Data** to include older simple entries as well.
 
 ### Deploying the Optional Recipe Proxy
 
@@ -142,7 +150,7 @@ The proxy allows only configured HTTPS recipe domains, follows redirects only wi
 ### Generating a Week Plan
 
 1. Go to **Planner** page
-2. Select a target week; the week number and date range appear beside the selector
+2. Select the ISO week containing the start date; the seven-day date range appears beside the selector
 3. Click **🎲 Generate Week**
 4. The algorithm will create an optimal plan based on:
    - Your meals
@@ -167,10 +175,10 @@ The proxy allows only configured HTTPS recipe domains, follows redirects only wi
 ### Managing Plans
 
 - **Regenerate** individual meal types or days
-- **Replace** specific meals by clicking on them
+- **Add or replace** individual components with their **+** buttons
 - **Choose school lunch per day** with the checkbox in each day's planner card
-- When the consecutive-meal rule is enabled above zero, generation leaves a slot empty if every available meal would repeat. Meal-prep-friendly meals may repeat for up to their configured prep days. Add more meals or components and regenerate to fill gaps; manual choices remain available.
-- The same-day rule also leaves a slot empty rather than using an identical meal twice in a day when enabled above zero.
+- When the consecutive-meal rule is enabled above zero, generation leaves a slot empty if any item would repeat on consecutive days. Meal-prep-friendly items may repeat for up to their configured prep days.
+- The same-day rule prevents an item from appearing in two meal slots on the same day. An item assigned to multiple categories can still fill those categories within one slot. Add more items and regenerate to fill gaps; manual choices remain available.
 - **Approve** plan to save to history
 - **Copy** previous plans from history
 
@@ -184,6 +192,7 @@ The proxy allows only configured HTTPS recipe domains, follows redirects only wi
 ### Settings
 
 Configure:
+- Planning start day (Monday by default). For example, Saturday creates a Saturday–Friday period. Changing it opens a separate period and keeps saved plans for the previous start day; switching back restores them.
 - Days to cook meals for
 - Weeks of history to avoid repeating
 - Optional HTTPS recipe import proxy URL

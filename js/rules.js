@@ -93,25 +93,48 @@ class RuleEngine {
     }
 
     ruleAvoidConsecutive(meal, plan, dayIndex, mealTimeType) {
-        let consecutiveDays = 1;
-        for (const direction of [-1, 1]) {
-            for (let index = dayIndex + direction; index >= 0 && index < this.days.length; index += direction) {
-                const adjacentDay = this.getDayPlan(plan, index);
-                if (!adjacentDay || !['breakfast', 'lunch', 'dinner'].some(type => adjacentDay[type]?.id === meal.id)) break;
-                consecutiveDays++;
+        for (const item of this.getMealItems(meal)) {
+            let consecutiveDays = 1;
+            for (const direction of [-1, 1]) {
+                for (let index = dayIndex + direction; index >= 0 && index < this.days.length; index += direction) {
+                    const adjacentDay = this.getDayPlan(plan, index);
+                    if (!adjacentDay || !['breakfast', 'lunch', 'dinner'].some(type =>
+                        this.getMealItems(adjacentDay[type]).some(previous => previous.id === item.id)
+                    )) break;
+                    consecutiveDays++;
+                }
             }
+            if (consecutiveDays > 1 &&
+                !(item.mealPrepFriendly && item.mealPrepDays >= 2 && consecutiveDays <= item.mealPrepDays)) return 0;
         }
-        if (consecutiveDays === 1) return 100;
-        return meal.mealPrepFriendly && meal.mealPrepDays >= 2 && consecutiveDays <= meal.mealPrepDays
-            ? 100 : 0;
+        return 100;
     }
 
     ruleAvoidSameMealDay(meal, plan, dayIndex, mealTimeType) {
         const day = this.getDayPlan(plan, dayIndex);
         if (!day) return 100;
+        const ids = new Set(this.getMealItems(meal).map(item => item.id));
         return ['breakfast', 'lunch', 'dinner'].some(type =>
-            type !== mealTimeType && day[type]?.id === meal.id
+            type !== mealTimeType && this.getMealItems(day[type]).some(item => ids.has(item.id))
         ) ? 0 : 100;
+    }
+
+    getMealItems(meal) {
+        if (!meal) return [];
+        if (meal.componentItems) {
+            return [...new Map(Object.values(meal.componentItems).map(item => [item.id, item])).values()];
+        }
+        if (meal.components) {
+            const keys = { protein: 'proteins', starch: 'starches', fruit: 'fruits', vegetable: 'vegetables' };
+            return Object.entries(keys)
+                .filter(([key]) => typeof meal.components[key] === 'string')
+                .map(([key, group]) => ({
+                    id: `component:${group}:${meal.components[key].trim().toLowerCase()}`,
+                    mealPrepFriendly: false,
+                    mealPrepDays: 0
+                }));
+        }
+        return meal.id ? [meal] : [];
     }
 
     ruleAvoidSameFoodGroup(meal, plan, dayIndex, mealTimeType) {
@@ -196,20 +219,25 @@ class RuleEngine {
 
         let recentMealIds = new Set();
         const currentDate = new Date();
+        const recentWeeks = new Set();
 
         for (let i = 0; i < historyWeeks; i++) {
             const date = new Date(currentDate);
             date.setDate(date.getDate() - (i * 7));
             const weekNum = this.getWeekNumber(date);
-            const year = date.getFullYear();
-            const key = `${year}-W${String(weekNum).padStart(2, '0')}`;
+            const thursday = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            thursday.setUTCDate(thursday.getUTCDate() + 4 - (thursday.getUTCDay() || 7));
+            recentWeeks.add(`${thursday.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`);
+        }
 
-            if (history[key] && history[key].plan) {
-                this.collectMealIds(history[key].plan, recentMealIds);
+        for (const item of Object.values(history)) {
+            const key = `${item.year}-W${String(item.weekNumber).padStart(2, '0')}`;
+            if (recentWeeks.has(key) && item.plan) {
+                this.collectMealIds(item.plan, recentMealIds);
             }
         }
 
-        if (recentMealIds.has(meal.id)) {
+        if (recentMealIds.has(meal.id) || this.getMealItems(meal).some(item => recentMealIds.has(item.id))) {
             return 30; // Penalize recent meals
         }
 
@@ -286,6 +314,7 @@ class RuleEngine {
                 ['breakfast', 'lunch', 'dinner'].forEach(type => {
                     if (day[type] && day[type].id) {
                         mealIdSet.add(day[type].id);
+                        this.getMealItems(day[type]).forEach(item => mealIdSet.add(item.id));
                     }
                 });
             }

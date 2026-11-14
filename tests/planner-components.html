@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Planner component tests</title></head>
+<body>
+<pre id="result">Running...</pre>
+<script>
+    const data = {
+        meals: [{
+            id: 'curry', name: 'Curry', mealTypes: ['Lunch', 'Dinner'],
+            categories: ['Protein', 'Vegetables'], ingredients: ['Chickpeas'],
+            foodGroups: [], tags: [], cuisine: 'Indian', protein: 'Vegetarian',
+            difficulty: 'Easy', mealPrepFriendly: false, mealPrepDays: 0
+        }],
+        recipes: [],
+        'meal-components': { proteins: [], starches: ['Rice'], vegetables: [] },
+        rules: [
+            { id: 'avoid-consecutive', enabled: true, strength: 75 },
+            { id: 'avoid-same-meal-day', enabled: true, strength: 75 }
+        ]
+    };
+    window.storage = {
+        get(key, fallback) { return data[key] === undefined ? fallback : structuredClone(data[key]); },
+        set(key, value) { data[key] = structuredClone(value); }
+    };
+</script>
+<script src="../js/repository.js"></script>
+<script src="../js/rules.js"></script>
+<script src="../js/planner.js"></script>
+<script src="../js/shopping.js"></script>
+<script>
+    function assert(condition, message) {
+        if (!condition) throw new Error(message);
+    }
+
+    try {
+        const meals = window.repository.getPlanningMealsByType('Lunch');
+        assert(meals.length === 1, 'Expected one complete combination');
+        const meal = meals[0];
+        assert(meal.componentItems.protein.id === 'curry' && meal.componentItems.vegetable.id === 'curry',
+            'A multi-category item should fill both categories');
+        assert(meal.componentItems.starch.name === 'Rice', 'Rice should be a separate starch item');
+        assert(meal.ingredients.filter(ingredient => ingredient === 'Chickpeas').length === 1,
+            'A reused item should contribute ingredients once');
+        assert(window.repository.getPlanningMealsByType('Breakfast').length === 0,
+            'Saved meal types must be respected');
+
+        const sharedRice = {
+            id: 'other', componentItems: {
+                protein: { id: 'chicken' },
+                starch: meal.componentItems.starch,
+                vegetable: { id: 'carrot' }
+            }
+        };
+        const comparison = window.planner.initializeEmptyPlan();
+        comparison.Monday.breakfast = sharedRice;
+        assert(window.ruleEngine.ruleAvoidSameMealDay(meal, comparison, 0, 'lunch') === 0,
+            'Different combinations sharing an item must not repeat on the same day');
+        assert(window.ruleEngine.ruleAvoidConsecutive(meal, comparison, 1, 'lunch') === 0,
+            'Different combinations sharing an item must not repeat on consecutive days');
+
+        const prepMeal = structuredClone(meal);
+        prepMeal.componentItems.starch.mealPrepFriendly = true;
+        prepMeal.componentItems.starch.mealPrepDays = 2;
+        assert(window.ruleEngine.ruleAvoidConsecutive(prepMeal, comparison, 1, 'lunch') === 100,
+            'A shared meal-prep item should be allowed for two consecutive days');
+        assert(window.ruleEngine.ruleAvoidSameMealDay(prepMeal, comparison, 0, 'lunch') === 0,
+            'Meal-prep items must still not repeat in different meals on the same day');
+        comparison.Wednesday.breakfast = sharedRice;
+        assert(window.ruleEngine.ruleAvoidConsecutive(prepMeal, comparison, 1, 'lunch') === 0,
+            'A meal-prep item must not exceed its consecutive-day limit');
+
+        const plan = window.planner.generateWeekPlan();
+        assert(plan.Monday.lunch && !plan.Monday.dinner && !plan.Tuesday.lunch && plan.Wednesday.lunch,
+            'Shared items must not repeat on the same or consecutive days');
+        const regenerated = window.planner.regenerateMealType('lunch');
+        assert(regenerated.Monday.lunch && !regenerated.Tuesday.lunch,
+            'Regeneration must respect item repetition rules');
+
+        data.meals[0].categories = ['Protein'];
+        assert(window.repository.getPlanningMealsByType('Lunch').length === 0,
+            'Generation must not produce an incomplete combination');
+        data.recipes.push({ mealId: 'curry', categories: ['Vegetables'] });
+        assert(window.repository.getPlanningMealsByType('Lunch').length === 1,
+            'Linked recipe categories should make a saved item eligible');
+
+        const riceId = meal.componentItems.starch.id;
+        data.recipes.push({ id: 'rice-recipe', mealId: riceId });
+        assert(window.repository.getComponent(riceId).name === 'Rice',
+            'Existing simple components must be available for recipe links');
+        assert(window.repository.getPlanningMealsByType('Lunch')[0].componentItems.starch.id === riceId,
+            'Existing simple component identities must remain stable in generated plans');
+        window.repository.removeSimpleMealComponent('starches', 0);
+        assert(data.recipes.find(recipe => recipe.id === 'rice-recipe').mealId === null,
+            'Removing a simple component must unlink its recipes');
+        assert(data.recipes.find(recipe => recipe.mealId === 'curry'),
+            'Removing a component must not unlink other recipes');
+
+        data['meal-components'].starches.push('Pasta');
+        const pastaId = window.repository.getSimpleComponentId('starches', 'Pasta');
+        data.recipes.push({ id: 'pasta-recipe', mealId: pastaId });
+        window.repository.updateSimpleMealComponent(pastaId, {
+            name: 'Whole-grain pasta', mealTypes: ['Lunch'], categories: ['Starch'],
+            ingredients: ['Pasta'], foodGroups: [], tags: []
+        });
+        assert(window.repository.getComponent(pastaId).name === 'Whole-grain pasta',
+            'Editing a simple component must preserve its identity');
+        assert(!data['meal-components'].starches.length &&
+            data.recipes.find(recipe => recipe.id === 'pasta-recipe').mealId === pastaId,
+            'Editing a simple component must preserve its recipe link without duplicating it');
+        assert(window.repository.getPlanningMealsByType('Lunch')[0].componentItems.starch.id === pastaId,
+            'Edited components must remain available to the planner');
+        window.repository.deleteMeal(pastaId);
+        assert(data.recipes.find(recipe => recipe.id === 'pasta-recipe').mealId === null,
+            'Deleting an edited component must unlink its recipes');
+
+        const egg = window.repository.addMeal({ name: 'Egg', mealTypes: ['Breakfast'], categories: ['Protein'] });
+        const bread = window.repository.addMeal({ name: 'Bread', mealTypes: ['Breakfast'], categories: ['Starch'] });
+        window.repository.addMeal({ name: 'Carrot', mealTypes: ['Breakfast'], categories: ['Vegetables'] });
+        assert(window.repository.getPlanningMealsByType('Breakfast').length === 0,
+            'Breakfast needs fruit, not a vegetable');
+        const apple = window.repository.addMeal({ name: 'Apple', mealTypes: ['Breakfast'], categories: ['Fruit'] });
+        const photoCredit = { title: 'Apple photo', author: 'Artist', license: 'CC BY 4.0',
+            sourceUrl: 'https://commons.wikimedia.org/wiki/File:Apple.jpg',
+            licenseUrl: 'https://creativecommons.org/licenses/by/4.0/' };
+        window.repository.updateMeal(apple.id, { ...apple, imageUrl: 'https://example.com/apple.jpg', imageCredit: photoCredit });
+        assert(window.repository.getComponent(apple.id).imageCredit.author === 'Artist' &&
+            JSON.parse(window.repository.exportMeals()).find(item => item.id === apple.id).imageUrl === 'https://example.com/apple.jpg',
+            'Component photo URLs and attribution must survive editing and export');
+        const appleWithPhoto = window.repository.getComponent(apple.id);
+        window.repository.updateMeal(apple.id, { ...appleWithPhoto, imageUrl: 'https://example.com/other.jpg', imageCredit: undefined });
+        assert(window.repository.getComponent(apple.id).imageCredit === null,
+            'Replacing a photo URL must not keep the old photo attribution');
+        const pear = window.repository.addMeal({ name: 'Pear', mealTypes: ['Breakfast'], categories: ['Fruit'] });
+        const breakfasts = window.repository.getPlanningMealsByType('Breakfast');
+        assert(breakfasts.length === 2 && breakfasts.every(item => item.componentItems.fruit && !item.componentItems.vegetable),
+            'Generated breakfast must include fruit');
+        window.repository.addMeal({ name: 'Lunch rice', mealTypes: ['Lunch'], categories: ['Starch'] });
+        const lunches = window.repository.getPlanningMealsByType('Lunch');
+        assert(lunches.length === 1 && lunches.every(item => item.componentItems.vegetable && !item.componentItems.fruit),
+            'Generated lunch must include vegetables');
+
+        delete data['current-week'];
+        const partial = window.planner.setMealComponent(0, 'breakfast', 'fruit', apple.id);
+        assert(partial.componentItems.fruit.id === apple.id && !partial.componentItems.protein,
+            'A component must be selectable without filling other slots or generating a week');
+        assert(window.planner.getCurrentWeek().plan.Monday.breakfast.ingredients.includes('Apple'),
+            'A partial meal must be persisted with shopping ingredients');
+        window.planner.setMealComponent(0, 'breakfast', 'protein', egg.id);
+        window.planner.setMealComponent(0, 'breakfast', 'starch', bread.id);
+        const replaced = window.planner.setMealComponent(0, 'breakfast', 'fruit', pear.id);
+        assert(replaced.componentItems.protein.id === egg.id && replaced.componentItems.starch.id === bread.id &&
+            replaced.componentItems.fruit.id === pear.id && !replaced.ingredients.includes('Apple'),
+            'Changing a component must preserve the other slots and recalculate ingredients');
+        assert(window.shoppingManager.generateShoppingList().some(item => item.name === 'Pear'),
+            'The shopping list must include manually selected components');
+        window.planner.setSchoolLunch(0, true);
+        let rejected = false;
+        try { window.planner.setMealComponent(0, 'lunch', 'protein', 'curry'); } catch (error) { rejected = true; }
+        assert(rejected && !window.planner.getCurrentWeek().plan.Monday.lunch,
+            'School lunch must not accept components');
+
+        window.planner.setTargetWeek('2026-W46');
+        window.planner.setSchoolLunch(0, true);
+        const mondayKey = window.planner.getCurrentWeekInfo().weekKey;
+        data.settings = { planningStartDay: 'Saturday' };
+        window.planner.setPlanningStartDay('Saturday');
+        let weekInfo = window.planner.getCurrentWeekInfo();
+        assert(weekInfo.weekStartDate === '2026-11-14' && weekInfo.weekEndDate === '2026-11-20' &&
+            window.planner.days.join(',') === 'Saturday,Sunday,Monday,Tuesday,Wednesday,Thursday,Friday',
+            'Saturday planning must cover Saturday through Friday');
+        assert(data['weekly-plans'][mondayKey].plan.Monday.schoolLunch && !window.planner.getCurrentWeek().plan.Monday.schoolLunch,
+            'Changing the start day must preserve the existing Monday plan in a separate period');
+        window.planner.setSchoolLunch(0, true);
+        assert(window.planner.getCurrentWeek().plan.Saturday.schoolLunch, 'Day indexes must use the selected order');
+        const orderedPlan = window.planner.initializeEmptyPlan();
+        orderedPlan.Sunday.breakfast = { id: 'repeat', mealPrepFriendly: false, mealPrepDays: 0 };
+        assert(window.ruleEngine.ruleAvoidConsecutive({ id: 'repeat' }, orderedPlan, 2, 'breakfast') === 0,
+            'Consecutive rules must follow the selected order across Sunday and Monday');
+        window.planner.setTargetWeek('2026-W47');
+        assert(window.planner.getCurrentWeekInfo().weekStartDate === '2026-11-21',
+            'Selecting a later ISO week must retain the chosen start day');
+        window.planner.setTargetWeek('2026-W46');
+        assert(window.planner.getCurrentWeek().plan.Saturday.schoolLunch, 'Returning to a period must restore its plan');
+        data.settings.planningStartDay = 'Monday';
+        window.planner.setPlanningStartDay('Monday');
+        assert(window.planner.getCurrentWeek().plan.Monday.schoolLunch,
+            'Switching back must restore the original Monday plan');
+        weekInfo = window.planner.getWeekInfo(new Date('2027-01-03T00:00:00Z'));
+        assert(weekInfo.year === 2026 && weekInfo.weekNumber === 53 &&
+            weekInfo.weekEndDate === '2027-01-09', 'ISO week-year must be correct across New Year');
+        window.planner.weekdays.forEach((startDay, index) => {
+            data.settings.planningStartDay = startDay;
+            window.planner.setPlanningStartDay(startDay);
+            window.planner.setTargetWeek('2026-W53');
+            const expected = new Date('2026-12-28T00:00:00Z');
+            expected.setUTCDate(expected.getUTCDate() + index);
+            const info = window.planner.getCurrentWeekInfo();
+            assert(info.weekStartDate === expected.toISOString().slice(0, 10) &&
+                info.year === 2026 && info.weekNumber === 53 && window.planner.days[0] === startDay,
+                `Week selection must handle ${startDay} across New Year`);
+        });
+        const now = new Date();
+        const isoThursday = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+        isoThursday.setUTCDate(isoThursday.getUTCDate() + 4 - (isoThursday.getUTCDay() || 7));
+        data.history = { saturday: {
+            year: isoThursday.getUTCFullYear(), weekNumber: window.ruleEngine.getWeekNumber(now),
+            plan: { Saturday: { breakfast: { id: 'recent-item' } } }
+        } };
+        assert(window.ruleEngine.ruleAvoidRecentMeals({ id: 'recent-item' }) === 30,
+            'Recent-meal rules must include history saved for non-Monday periods');
+
+        document.getElementById('result').textContent = 'All planner component tests passed.';
+    } catch (error) {
+        document.getElementById('result').textContent = `FAILED: ${error.message}`;
+        throw error;
+    }
+</script>
+</body>
+</html>

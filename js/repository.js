@@ -9,13 +9,17 @@ class Repository {
         return 'meal-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     }
 
-    addMeal(mealData) {
+    addMeal(mealData, id = this.generateId()) {
         const mealTypes = this.normalizeMealTypes(mealData.mealTypes || mealData.mealType);
         const meal = {
-            id: this.generateId(),
+            id,
             name: mealData.name,
             mealType: mealTypes[0] || mealData.mealType || '',
             mealTypes,
+            categories: this.normalizeCategories(mealData.categories !== undefined
+                ? mealData.categories : this.parseList(mealData.foodGroups)),
+            imageUrl: mealData.imageUrl || '',
+            imageCredit: mealData.imageCredit || null,
             cuisine: mealData.cuisine || 'Other',
             protein: mealData.protein || '',
             foodGroups: this.parseList(mealData.foodGroups),
@@ -49,6 +53,13 @@ class Repository {
             name: mealData.name,
             mealType: this.normalizeMealTypes(mealData.mealTypes || mealData.mealType)[0] || mealData.mealType || '',
             mealTypes: this.normalizeMealTypes(mealData.mealTypes || mealData.mealType),
+            categories: mealData.categories !== undefined
+                ? this.normalizeCategories(mealData.categories)
+                : this.getMealCategories(meals[index]),
+            imageUrl: mealData.imageUrl !== undefined ? mealData.imageUrl : (meals[index].imageUrl || ''),
+            imageCredit: mealData.imageCredit !== undefined ? mealData.imageCredit
+                : mealData.imageUrl !== undefined && mealData.imageUrl !== (meals[index].imageUrl || '')
+                    ? null : (meals[index].imageCredit || null),
             cuisine: mealData.cuisine || 'Other',
             protein: mealData.protein || '',
             foodGroups: this.parseList(mealData.foodGroups),
@@ -64,6 +75,11 @@ class Repository {
     }
 
     deleteMeal(id) {
+        const simple = this.findSimpleMealComponent(id);
+        if (simple) {
+            this.removeSimpleMealComponent(simple.category, simple.index);
+            return;
+        }
         const meals = this.storage.get('meals', []);
         const filtered = meals.filter(m => m.id !== id);
         this.storage.set('meals', filtered);
@@ -89,12 +105,89 @@ class Repository {
         return meals.filter(meal => this.normalizeMealTypes(meal.mealTypes || meal.mealType).includes(type));
     }
 
+    normalizeCategories(input) {
+        const values = Array.isArray(input) ? input : [];
+        return ['Protein', 'Starch', 'Fruit', 'Vegetables'].filter(category =>
+            values.some(value => typeof value === 'string' && value.toLowerCase() === category.toLowerCase())
+        );
+    }
+
+    getMealCategories(meal) {
+        const recipes = this.storage.get('recipes', []).filter(recipe => recipe.mealId === meal.id);
+        return this.normalizeCategories([
+            ...(Array.isArray(meal.categories) ? meal.categories : (meal.foodGroups || [])),
+            ...recipes.flatMap(recipe => Array.isArray(recipe.categories) ? recipe.categories : [recipe.category])
+        ]);
+    }
+
     getMealComponents() {
         return this.storage.get('meal-components', {
             proteins: [],
             starches: [],
             vegetables: []
         });
+    }
+
+    getSimpleComponentId(category, name) {
+        return `component:${category}:${name.trim().toLowerCase()}`;
+    }
+
+    getSimpleMealComponents() {
+        const components = this.getMealComponents();
+        return [
+            ['proteins', 'Protein'],
+            ['starches', 'Starch'],
+            ['vegetables', 'Vegetables']
+        ].flatMap(([key, category]) => components[key].map(name => ({
+            id: this.getSimpleComponentId(key, name),
+            name,
+            categories: [category],
+            mealTypes: ['Breakfast', 'Lunch', 'Dinner'],
+            cuisine: 'Home',
+            protein: category === 'Protein' ? name : '',
+            foodGroups: [name],
+            ingredients: [name],
+            difficulty: 'Easy',
+            mealPrepFriendly: false,
+            mealPrepDays: 0,
+            tags: []
+        })));
+    }
+
+    getComponent(id) {
+        return this.getMeal(id) || this.getSimpleMealComponents().find(item => item.id === id) || null;
+    }
+
+    findSimpleMealComponent(id) {
+        const components = this.getMealComponents();
+        for (const category of ['proteins', 'starches', 'vegetables']) {
+            const index = components[category].findIndex(name => this.getSimpleComponentId(category, name) === id);
+            if (index !== -1) return { category, index };
+        }
+        return null;
+    }
+
+    updateSimpleMealComponent(id, mealData) {
+        const simple = this.findSimpleMealComponent(id);
+        if (!simple || this.getMeal(id)) throw new Error('Component not found or duplicated');
+        const components = this.getMealComponents();
+        const meal = this.addMeal(mealData, id);
+        components[simple.category].splice(simple.index, 1);
+        this.saveMealComponents(components);
+        return meal;
+    }
+
+    removeSimpleMealComponent(category, index) {
+        const components = this.getMealComponents();
+        const name = components[category][index];
+        const id = this.getSimpleComponentId(category, name);
+        components[category].splice(index, 1);
+        this.saveMealComponents(components);
+        const recipes = this.storage.get('recipes', []);
+        this.storage.set('recipes', recipes.map(recipe =>
+            recipe.mealId === id ? { ...recipe, mealId: null } : recipe
+        ));
+        return name;
     }
 
     saveMealComponents(components) {
@@ -107,35 +200,66 @@ class Repository {
         return normalized;
     }
 
+    getMealSlots(type) {
+        return [
+            { key: 'protein', category: 'Protein', icon: '🍗' },
+            { key: 'starch', category: 'Starch', icon: '🍚' },
+            type.toLowerCase() === 'breakfast'
+                ? { key: 'fruit', category: 'Fruit', icon: '🍎' }
+                : { key: 'vegetable', category: 'Vegetables', icon: '🥦' }
+        ];
+    }
+
+    getComponentsByCategory(type, category) {
+        return [...this.getSimpleMealComponents(), ...this.getMealsByType(type)]
+            .filter(item => this.getMealCategories(item).includes(category));
+    }
+
+    createComponentMeal(type, componentItems) {
+        const slots = this.getMealSlots(type);
+        const items = slots.map(slot => componentItems[slot.key]).filter(Boolean);
+        if (!items.length) throw new Error('A meal must contain at least one component.');
+        const uniqueItems = [...new Map(items.map(item => [item.id, item])).values()];
+        const protein = componentItems.protein;
+        return {
+            id: `components:${JSON.stringify(slots.map(slot => componentItems[slot.key]?.id || null))}`,
+            name: items.map(item => item.name).join(' with '),
+            mealType: type,
+            mealTypes: [type],
+            cuisine: protein?.cuisine || 'Home',
+            protein: protein?.protein || protein?.name || 'N/A',
+            foodGroups: uniqueItems.flatMap(item => (item.foodGroups || [])
+                .filter(group => !['protein', 'starch', 'fruit', 'vegetables'].includes(group.toLowerCase()))),
+            mealPrepFriendly: slots.every(slot => componentItems[slot.key]) &&
+                uniqueItems.every(item => item.mealPrepFriendly && item.mealPrepDays >= 2),
+            mealPrepDays: Math.min(...uniqueItems.map(item => item.mealPrepDays || 0)),
+            difficulty: uniqueItems.some(item => item.difficulty === 'Hard') ? 'Hard'
+                : uniqueItems.some(item => item.difficulty === 'Medium') ? 'Medium' : 'Easy',
+            ingredients: uniqueItems.flatMap(item => item.ingredients?.length ? item.ingredients : [item.name]),
+            tags: uniqueItems.flatMap(item => item.tags || []),
+            components: Object.fromEntries(slots.filter(slot => componentItems[slot.key])
+                .map(slot => [slot.key, componentItems[slot.key].name])),
+            componentItems: Object.fromEntries(slots.filter(slot => componentItems[slot.key])
+                .map(slot => [slot.key, componentItems[slot.key]]))
+        };
+    }
+
     getPlanningMealsByType(type) {
-        const { proteins, starches, vegetables } = this.getMealComponents();
-        if (!proteins.length || !starches.length || !vegetables.length) {
-            return this.getMealsByType(type);
-        }
+        const slots = this.getMealSlots(type);
+        const groups = slots.map(slot => this.getComponentsByCategory(type, slot.category));
+        if (groups.some(group => !group.length)) return [];
 
         const combinations = [];
-        proteins.forEach(protein => {
-            starches.forEach(starch => {
-                vegetables.forEach(vegetable => {
-                    combinations.push({
-                        id: `components:${JSON.stringify([protein, starch, vegetable])}`,
-                        name: `${protein} with ${starch} and ${vegetable}`,
-                        mealType: type,
-                        mealTypes: [type],
-                        cuisine: 'Home',
-                        protein,
-                        foodGroups: [protein, starch, vegetable],
-                        mealPrepFriendly: false,
-                        mealPrepDays: 0,
-                        difficulty: 'Easy',
-                        ingredients: [protein, starch, vegetable],
-                        tags: [],
-                        components: { protein, starch, vegetable }
-                    });
+        groups[0].forEach(protein => {
+            groups[1].forEach(starch => {
+                groups[2].forEach(produce => {
+                    combinations.push(this.createComponentMeal(type, {
+                        protein, starch, [slots[2].key]: produce
+                    }));
                 });
             });
         });
-        return [...combinations, ...this.getMealsByType(type)];
+        return combinations;
     }
 
     searchMeals(query) {

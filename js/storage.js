@@ -117,6 +117,7 @@ class Storage {
         return {
             cookForDays: 2,
             historyWeeksToAvoid: 4,
+            planningStartDay: 'Monday',
             darkMode: false
         };
     }
@@ -161,7 +162,11 @@ class Storage {
 
     // History management
     saveToHistory(weekNumber, year, plan, statistics = {}, weekDates = {}) {
-        const key = `${year}-W${String(weekNumber).padStart(2, '0')}`;
+        const baseKey = weekDates.weekKey || `${year}-W${String(weekNumber).padStart(2, '0')}`;
+        const history = this.get('history', {});
+        let key = baseKey;
+        let revision = 2;
+        while (history[key]) key = `${baseKey}#${revision++}`;
         const historyItem = {
             weekNumber,
             year,
@@ -174,7 +179,6 @@ class Storage {
             status: 'approved'
         };
         
-        const history = this.get('history', {});
         history[key] = historyItem;
         this.set('history', history);
         

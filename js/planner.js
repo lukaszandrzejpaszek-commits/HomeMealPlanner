@@ -5,18 +5,22 @@ class Planner {
         this.storage = storage;
         this.repository = repository;
         this.ruleEngine = ruleEngine;
-        this.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        this.weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         this.mealTypes = ['breakfast', 'lunch', 'dinner'];
-        this.selectedWeekStart = this.getWeekStart(new Date());
+        const startDay = this.getPlanningStartDay();
 
         const currentWeek = this.storage.get('current-week');
         if (currentWeek) {
+            let weekStart = this.getWeekStart(new Date(), 'Monday');
             if (currentWeek.weekStartDate) {
-                const weekStart = new Date(`${currentWeek.weekStartDate}T00:00:00Z`);
-                if (!Number.isNaN(weekStart.getTime())) this.selectedWeekStart = weekStart;
+                const savedStart = new Date(`${currentWeek.weekStartDate}T00:00:00Z`);
+                if (!Number.isNaN(savedStart.getTime())) weekStart = savedStart;
             }
+            this.setSelectedWeekStart(weekStart);
             this.saveCurrentWeek(currentWeek);
+            if (this.days[0] !== startDay) this.setPlanningStartDay(startDay);
         } else {
+            this.setSelectedWeekStart(this.getWeekStart(new Date(), startDay));
             const weekInfo = this.getCurrentWeekInfo();
             const savedWeek = this.storage.get('weekly-plans', {})[weekInfo.weekKey];
             if (savedWeek) {
@@ -187,6 +191,28 @@ class Planner {
         return null;
     }
 
+    setMealComponent(dayIndex, mealType, slotKey, componentId) {
+        const day = this.days[dayIndex];
+        if (!day || !this.mealTypes.includes(mealType)) throw new Error('Invalid planner slot.');
+        const type = this.capitalize(mealType);
+        const slot = this.repository.getMealSlots(type).find(item => item.key === slotKey);
+        if (!slot) throw new Error('Invalid component category.');
+        const component = this.repository.getComponentsByCategory(type, slot.category)
+            .find(item => item.id === componentId);
+        if (!component) throw new Error('This component is no longer available for this meal.');
+
+        const currentWeek = this.storage.get('current-week') || this.createWeekRecord(this.initializeEmptyPlan());
+        if (mealType === 'lunch' && currentWeek.plan[day].schoolLunch) {
+            throw new Error('Turn off school lunch before adding components.');
+        }
+        const previousMeal = currentWeek.plan[day][mealType];
+        const items = { ...(previousMeal?.componentItems || {}), [slotKey]: component };
+        currentWeek.plan[day][mealType] = this.repository.createComponentMeal(type, items);
+        currentWeek.lastModified = new Date().toISOString();
+        this.saveCurrentWeek(currentWeek);
+        return currentWeek.plan[day][mealType];
+    }
+
     setSchoolLunch(dayIndex, enabled) {
         let currentWeek = this.storage.get('current-week');
         if (!currentWeek) {
@@ -227,15 +253,17 @@ class Planner {
         const weekStart = new Date(januaryFourth);
         const day = weekStart.getUTCDay() || 7;
         weekStart.setUTCDate(weekStart.getUTCDate() - day + 1 + ((weekNumber - 1) * 7));
-        const selectedInfo = this.getWeekInfo(weekStart);
-        if (selectedInfo.year !== year || selectedInfo.weekNumber !== weekNumber) {
+        const mondayInfo = this.getWeekInfo(weekStart);
+        if (mondayInfo.year !== year || mondayInfo.weekNumber !== weekNumber) {
             throw new Error('That ISO week does not exist in the selected year.');
         }
 
         const currentWeek = this.getCurrentWeek();
         if (currentWeek) this.saveCurrentWeek(currentWeek);
 
-        this.selectedWeekStart = weekStart;
+        weekStart.setUTCDate(weekStart.getUTCDate() + this.weekdays.indexOf(this.getPlanningStartDay()));
+        this.setSelectedWeekStart(weekStart);
+        const selectedInfo = this.getCurrentWeekInfo();
         const savedWeeks = this.storage.get('weekly-plans', {});
         const targetWeek = savedWeeks[selectedInfo.weekKey] || this.createWeekRecord(this.initializeEmptyPlan());
         this.saveCurrentWeek(targetWeek);
@@ -251,10 +279,40 @@ class Planner {
         return this.storage.get('current-week');
     }
 
-    getWeekStart(date) {
+    getPlanningStartDay() {
+        const startDay = this.storage.get('settings', {}).planningStartDay;
+        return this.weekdays.includes(startDay) ? startDay : 'Monday';
+    }
+
+    setSelectedWeekStart(date) {
+        this.selectedWeekStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+        const index = (this.selectedWeekStart.getUTCDay() + 6) % 7;
+        this.days = [...this.weekdays.slice(index), ...this.weekdays.slice(0, index)];
+        this.ruleEngine.days = [...this.days];
+    }
+
+    setPlanningStartDay(startDay) {
+        const index = this.weekdays.indexOf(startDay);
+        if (index === -1) throw new Error('Choose a valid planning start day.');
+        if (this.days[0] === startDay) return;
+        const currentWeek = this.getCurrentWeek();
+        if (currentWeek) this.saveCurrentWeek(currentWeek);
+
+        const start = new Date(this.selectedWeekStart);
+        start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7) + index);
+        this.setSelectedWeekStart(start);
+        const info = this.getCurrentWeekInfo();
+        const target = this.storage.get('weekly-plans', {})[info.weekKey] ||
+            this.createWeekRecord(this.initializeEmptyPlan());
+        this.saveCurrentWeek(target);
+    }
+
+    getWeekStart(date, startDay = this.getPlanningStartDay()) {
         const start = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-        const day = start.getUTCDay() || 7;
-        start.setUTCDate(start.getUTCDate() - day + 1);
+        const index = this.weekdays.indexOf(startDay);
+        if (index === -1) throw new Error('Choose a valid planning start day.');
+        const currentIndex = (start.getUTCDay() + 6) % 7;
+        start.setUTCDate(start.getUTCDate() - ((currentIndex - index + 7) % 7));
         return start;
     }
 
@@ -265,8 +323,8 @@ class Planner {
             weekStart.getUTCDate()
         ));
         const thursday = new Date(start);
-        thursday.setUTCDate(thursday.getUTCDate() + 3);
-        const weekNumber = this.getWeekNumber(thursday);
+        thursday.setUTCDate(thursday.getUTCDate() + 4 - (thursday.getUTCDay() || 7));
+        const weekNumber = this.getWeekNumber(start);
         const year = thursday.getUTCFullYear();
         const end = new Date(start);
         end.setUTCDate(end.getUTCDate() + 6);
@@ -275,7 +333,8 @@ class Planner {
             weekNum: weekNumber,
             weekNumber,
             year,
-            weekKey: `${year}-W${String(weekNumber).padStart(2, '0')}`,
+            weekKey: `${year}-W${String(weekNumber).padStart(2, '0')}` +
+                (start.getUTCDay() === 1 ? '' : `@${start.toISOString().slice(0, 10)}`),
             weekStartDate: start.toISOString().slice(0, 10),
             weekEndDate: end.toISOString().slice(0, 10)
         };
@@ -333,7 +392,7 @@ class Planner {
             if (day && typeof day === 'object') {
                 ['breakfast', 'lunch', 'dinner'].forEach(type => {
                     if (day[type] && day[type].id) {
-                        this.repository.recordMealUsage(day[type].id);
+                        this.ruleEngine.getMealItems(day[type]).forEach(item => this.repository.recordMealUsage(item.id));
                     }
                 });
             }

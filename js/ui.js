@@ -6,6 +6,10 @@ class UIManager {
         this.currentEditingRuleId = null;
         this.currentMealPickerContext = null;
         this.recipeMealCreationPending = false;
+        this.componentPhotoCredit = null;
+        this.componentPhotoUrl = '';
+        this.photoSearchController = null;
+        this.componentInfoController = null;
     }
 
     init() {
@@ -41,21 +45,31 @@ class UIManager {
         document.getElementById('btn-regenerate-breakfast').addEventListener('click', () => this.regenerateMealType('breakfast'));
         document.getElementById('btn-regenerate-lunch').addEventListener('click', () => this.regenerateMealType('lunch'));
         document.getElementById('btn-regenerate-dinner').addEventListener('click', () => this.regenerateMealType('dinner'));
+        document.getElementById('picker-search').addEventListener('input', () => this.displayComponentPicker());
 
         // Meals page
         document.getElementById('btn-add-meal').addEventListener('click', () => this.openMealModal());
         document.getElementById('meal-search').addEventListener('input', () => this.filterMeals());
+        document.getElementById('meal-filter-category').addEventListener('change', () => this.filterMeals());
         document.getElementById('meal-filter-type').addEventListener('change', () => this.filterMeals());
         document.getElementById('meal-filter-cuisine').addEventListener('change', () => this.filterMeals());
         document.getElementById('meal-form').addEventListener('submit', (e) => this.saveMeal(e));
         document.getElementById('btn-cancel-meal').addEventListener('click', () => this.cancelMealModal());
+        document.getElementById('btn-find-component-info').addEventListener('click', () => this.searchComponentInfo());
+        document.getElementById('meal-name').addEventListener('input', () => this.resetComponentInfo());
+        document.getElementById('btn-search-component-photo').addEventListener('click', () => this.searchComponentPhotos());
+        document.getElementById('meal-image-url').addEventListener('input', () => {
+            this.componentPhotoCredit = null;
+            this.componentPhotoUrl = '';
+            document.getElementById('component-photo-credit').replaceChildren();
+            this.updateComponentPhotoPreview();
+        });
+        document.querySelectorAll('input[name="meal-category"]').forEach(input => {
+            input.addEventListener('change', () => this.updateMealProteinVisibility());
+        });
         document.getElementById('meal-prep-friendly').addEventListener('change', (e) => {
             document.getElementById('meal-prep-days-group').style.display = e.target.checked ? 'grid' : 'none';
         });
-        document.querySelectorAll('.meal-component-form').forEach(form => {
-            form.addEventListener('submit', event => this.addMealComponent(event));
-        });
-
         // Recipes page
         if (document.getElementById('btn-add-recipe')) {
             document.getElementById('btn-add-recipe').addEventListener('click', () => this.openRecipeModal());
@@ -108,6 +122,8 @@ class UIManager {
 
     closeModal(modal) {
         modal.classList.remove('active');
+        if (modal.id === 'meal-modal' && this.photoSearchController) this.photoSearchController.abort();
+        if (modal.id === 'meal-modal' && this.componentInfoController) this.componentInfoController.abort();
         if (modal.id === 'meal-modal' && this.recipeMealCreationPending) {
             this.recipeMealCreationPending = false;
             document.getElementById('recipe-modal').classList.add('active');
@@ -121,7 +137,6 @@ class UIManager {
     loadInitialState() {
         this.displayCurrentWeek();
         this.displayMeals();
-        this.loadMealComponents();
         this.displayRecipes();
         this.displayRules();
         this.displayHistory();
@@ -207,21 +222,22 @@ class UIManager {
         const weekView = document.getElementById('week-view');
         weekView.innerHTML = '';
 
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        days.forEach((day, dayIndex) => {
+        window.planner.days.forEach((day, dayIndex) => {
             const dayPlan = plan[day];
-            const dayCard = this.createDayCard(day, dayIndex, dayPlan);
+            const date = new Date(startDate);
+            date.setUTCDate(date.getUTCDate() + dayIndex);
+            const dayCard = this.createDayCard(day, dayIndex, dayPlan, dateFormat.format(date));
             weekView.appendChild(dayCard);
         });
     }
 
-    createDayCard(dayName, dayIndex, dayPlan) {
+    createDayCard(dayName, dayIndex, dayPlan, dateLabel) {
         const card = document.createElement('div');
         card.className = 'day-card';
 
         const header = document.createElement('div');
         header.className = 'day-header';
-        header.textContent = dayName;
+        header.textContent = `${dayName} · ${dateLabel}`;
         card.appendChild(header);
 
         const mealsContainer = document.createElement('div');
@@ -249,25 +265,71 @@ class UIManager {
             }
             slot.appendChild(label);
 
-            let mealItem = document.createElement('div');
+            const mealItem = document.createElement('div');
             mealItem.className = 'meal-item';
 
             if (mealType === 'lunch' && dayPlan.schoolLunch) {
                 mealItem.className += ' school-lunch';
                 mealItem.textContent = 'School Lunch';
-            } else if (!dayPlan[mealType]) {
-                mealItem.className += ' empty';
-                mealItem.textContent = '+ Add Meal';
-                mealItem.addEventListener('click', () => this.openMealPicker(dayIndex, mealType));
             } else {
                 const meal = dayPlan[mealType];
-                mealItem.innerHTML = `
-                    <div class="meal-name">${meal.name}</div>
-                    <div class="meal-info">${meal.cuisine} • ${meal.protein || 'N/A'}</div>
-                `;
-                mealItem.addEventListener('click', () => this.openMealPicker(dayIndex, mealType));
-                const recipeLinks = this.createLinkedRecipeLinks(meal.id);
-                if (recipeLinks) mealItem.appendChild(recipeLinks);
+                const slots = window.repository.getMealSlots(mealType);
+                if (meal && !meal.componentItems) {
+                    const legacy = document.createElement('button');
+                    legacy.type = 'button';
+                    legacy.className = 'planner-meal-open';
+                    legacy.textContent = `Previous meal: ${meal.name}`;
+                    legacy.addEventListener('click', () => this.viewRecipesForMeal(meal.id));
+                    const photo = this.createComponentPhoto(meal, 'planner-meal-image');
+                    if (photo) legacy.prepend(photo.image);
+                    mealItem.appendChild(legacy);
+                    if (photo?.credit) mealItem.appendChild(this.createPhotoCredit(photo.credit));
+                } else if (meal?.componentItems?.vegetable && mealType === 'breakfast') {
+                    const legacy = document.createElement('button');
+                    legacy.type = 'button';
+                    legacy.className = 'planner-meal-open';
+                    legacy.textContent = `Previous vegetable: ${meal.componentItems.vegetable.name}`;
+                    legacy.addEventListener('click', () => this.viewRecipesForMeal(meal.componentItems.vegetable.id));
+                    const photo = this.createComponentPhoto(meal.componentItems.vegetable, 'planner-meal-image');
+                    if (photo) legacy.prepend(photo.image);
+                    mealItem.appendChild(legacy);
+                    if (photo?.credit) mealItem.appendChild(this.createPhotoCredit(photo.credit));
+                }
+                const components = document.createElement('div');
+                components.className = 'planner-components';
+                slots.forEach(({ key, category, icon }) => {
+                    const item = meal?.componentItems?.[key];
+                    const component = document.createElement('div');
+                    component.className = 'planner-component';
+                    const label = document.createElement('div');
+                    label.className = 'planner-component-label';
+                    label.textContent = `${icon} ${category}`;
+                    component.appendChild(label);
+                    if (item) {
+                        const openRecipe = document.createElement('button');
+                        openRecipe.type = 'button';
+                        openRecipe.className = 'planner-meal-open';
+                        openRecipe.setAttribute('aria-label', `View recipe for ${item.name}`);
+                        const name = document.createElement('span');
+                        name.className = 'meal-name';
+                        name.textContent = item.name;
+                        openRecipe.appendChild(name);
+                        const photo = this.createComponentPhoto(item, 'planner-meal-image');
+                        if (photo) openRecipe.prepend(photo.image);
+                        openRecipe.addEventListener('click', () => this.viewRecipesForMeal(item.id));
+                        component.appendChild(openRecipe);
+                        if (photo?.credit) component.appendChild(this.createPhotoCredit(photo.credit));
+                    }
+                    const add = document.createElement('button');
+                    add.type = 'button';
+                    add.className = 'btn btn-secondary btn-sm planner-add-component';
+                    add.textContent = '+';
+                    add.setAttribute('aria-label', `${item ? 'Change' : 'Add'} ${category} for ${dayName} ${mealType}`);
+                    add.addEventListener('click', () => this.openMealPicker(dayIndex, mealType, key));
+                    component.appendChild(add);
+                    components.appendChild(component);
+                });
+                mealItem.appendChild(components);
             }
 
             slot.appendChild(mealItem);
@@ -314,7 +376,7 @@ class UIManager {
         );
         alert(hasPlannedMeals
             ? 'Week plan generated.' + this.getEmptySlotsMessage(plan)
-            : 'No meals are available for this week. Add meals or complete all three meal component lists first.');
+            : 'No complete meals are available. Add protein and starch, plus fruit for breakfast or vegetables for lunch and dinner.');
     }
 
     regenerateMealType(mealType) {
@@ -339,7 +401,7 @@ class UIManager {
         });
         const messages = [];
         if (conflicts) messages.push(`${conflicts} slot(s) left empty to follow the same-day and consecutive-meal rules.`);
-        if (missing) messages.push(`${missing} slot(s) have no meals available for that meal type.`);
+        if (missing) messages.push(`${missing} slot(s) lack a protein, starch, fruit or vegetable for that meal type.`);
         if (messages.length) messages.push('Add more meals or meal components, then regenerate.');
         return messages.length ? '\n\n' + messages.join('\n') : '';
     }
@@ -354,121 +416,65 @@ class UIManager {
         }
     }
 
-    openMealPicker(dayIndex, mealType) {
-        this.currentMealPickerContext = { dayIndex, mealType };
-        const meals = window.repository.getPlanningMealsByType(mealType.charAt(0).toUpperCase() + mealType.slice(1));
+    openMealPicker(dayIndex, mealType, slotKey) {
+        this.currentMealPickerContext = { dayIndex, mealType, slotKey };
+        document.getElementById('picker-search').value = '';
+        this.displayComponentPicker();
+        document.getElementById('meal-picker-modal').classList.add('active');
+        document.getElementById('picker-search').focus();
+    }
+
+    displayComponentPicker() {
+        const { mealType, slotKey } = this.currentMealPickerContext;
+        const slot = window.repository.getMealSlots(mealType).find(item => item.key === slotKey);
+        const search = document.getElementById('picker-search').value.trim().toLowerCase();
+        const components = window.repository.getComponentsByCategory(
+            mealType.charAt(0).toUpperCase() + mealType.slice(1), slot.category
+        ).filter(item => item.name.toLowerCase().includes(search));
+        document.getElementById('meal-picker-title').textContent = `Select ${slot.category} for ${mealType}`;
 
         const list = document.getElementById('meal-picker-list');
         list.innerHTML = '';
 
-        meals.forEach(meal => {
-            const item = document.createElement('div');
+        if (!components.length) {
+            const empty = document.createElement('div');
+            empty.className = 'empty-state';
+            empty.textContent = search
+                ? 'No components match your search.'
+                : `No ${slot.category.toLowerCase()} components are available for ${mealType}. Add one in Meal Components.`;
+            list.appendChild(empty);
+        }
+
+        components.forEach(component => {
+            const item = document.createElement('button');
+            item.type = 'button';
             item.className = 'meal-picker-item';
-            item.innerHTML = `
-                <div class="meal-name">${meal.name}</div>
-                <div class="meal-info">${meal.cuisine} • ${meal.protein || 'N/A'}</div>
-            `;
-            item.addEventListener('click', () => this.selectMeal(meal.id));
+            item.textContent = component.name;
+            item.addEventListener('click', () => this.selectMealComponent(component.id));
             list.appendChild(item);
         });
-
-        document.getElementById('meal-picker-modal').classList.add('active');
     }
 
-    selectMeal(mealId) {
+    selectMealComponent(componentId) {
         const ctx = this.currentMealPickerContext;
-        window.planner.replaceMeal(ctx.dayIndex, ctx.mealType, mealId);
-        document.getElementById('meal-picker-modal').classList.remove('active');
-        this.displayCurrentWeek();
+        const day = window.planner.days[ctx.dayIndex];
+        const meal = window.planner.getCurrentWeek()?.plan[day]?.[ctx.mealType];
+        const slotKeys = window.repository.getMealSlots(ctx.mealType).map(slot => slot.key);
+        if (meal && (!meal.componentItems || Object.keys(meal.componentItems).some(key => !slotKeys.includes(key))) &&
+            !confirm('This changes an older meal format. Its previous meal or extra component will be removed. Continue?')) return;
+        try {
+            window.planner.setMealComponent(ctx.dayIndex, ctx.mealType, ctx.slotKey, componentId);
+            document.getElementById('meal-picker-modal').classList.remove('active');
+            this.displayCurrentWeek();
+        } catch (error) {
+            alert(error.message);
+        }
     }
 
     // ===== MEALS PAGE =====
 
     displayMeals() {
-        const meals = window.repository.getAllMeals();
-        const grid = document.getElementById('meals-grid');
-        grid.innerHTML = '';
-
-        if (meals.length === 0) {
-            grid.innerHTML = '<div class="empty-state">No meals yet. Add your first meal!</div>';
-            return;
-        }
-
-        meals.forEach(meal => {
-            const card = this.createMealCard(meal);
-            grid.appendChild(card);
-        });
-    }
-
-    loadMealComponents() {
-        const components = window.repository.getMealComponents();
-        const categories = [
-            { key: 'proteins', label: 'proteins' },
-            { key: 'starches', label: 'starches' },
-            { key: 'vegetables', label: 'vegetables' }
-        ];
-
-        categories.forEach(({ key, label }) => {
-            const list = document.getElementById(`meal-component-${key}`);
-            list.replaceChildren();
-
-            if (!components[key].length) {
-                const empty = document.createElement('li');
-                empty.className = 'meal-component-empty';
-                empty.textContent = `No ${label} added yet.`;
-                list.appendChild(empty);
-                return;
-            }
-
-            components[key].forEach((value, index) => {
-                const item = document.createElement('li');
-                const name = document.createElement('span');
-                name.textContent = value;
-                const remove = document.createElement('button');
-                remove.type = 'button';
-                remove.className = 'btn btn-danger btn-sm';
-                remove.textContent = 'Remove';
-                remove.setAttribute('aria-label', `Remove ${value} from ${label}`);
-                remove.addEventListener('click', () => this.removeMealComponent(key, index));
-                item.append(name, remove);
-                list.appendChild(item);
-            });
-        });
-
-        const allCategoriesReady = categories.every(({ key }) => components[key].length > 0);
-        document.getElementById('meal-components-status').textContent = allCategoriesReady
-            ? 'Each generated meal will include one item from every column.'
-            : 'Add at least one item to each column to generate complete meals.';
-    }
-
-    addMealComponent(event) {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const category = form.dataset.category;
-        const input = form.querySelector('input');
-        const value = input.value.trim();
-        if (!value) return;
-
-        const components = window.repository.getMealComponents();
-        if (components[category].some(item => item.toLowerCase() === value.toLowerCase())) {
-            document.getElementById('meal-components-status').textContent = `${value} is already in this column.`;
-            input.focus();
-            return;
-        }
-
-        components[category].push(value);
-        window.repository.saveMealComponents(components);
-        input.value = '';
-        this.loadMealComponents();
-        document.getElementById('meal-components-status').textContent = `${value} added.`;
-    }
-
-    removeMealComponent(category, index) {
-        const components = window.repository.getMealComponents();
-        const [removed] = components[category].splice(index, 1);
-        window.repository.saveMealComponents(components);
-        this.loadMealComponents();
-        document.getElementById('meal-components-status').textContent = `${removed} removed.`;
+        this.filterMeals();
     }
 
     getCheckedValues(name) {
@@ -490,6 +496,21 @@ class UIManager {
         });
     }
 
+    setMealCategories(categories) {
+        document.querySelectorAll('input[name="meal-category"]').forEach(input => {
+            input.checked = categories.includes(input.value);
+        });
+        this.updateMealProteinVisibility();
+    }
+
+    updateMealProteinVisibility() {
+        const linkedProtein = this.currentEditingMealId &&
+            window.recipeManager.getRecipesByMeal(this.currentEditingMealId)
+                .some(recipe => this.getRecipeCategories(recipe).includes('Protein'));
+        document.getElementById('meal-protein-group').hidden =
+            !this.getCheckedValues('meal-category').includes('Protein') && !linkedProtein;
+    }
+
     setMealProtein(protein) {
         const select = document.getElementById('meal-protein');
         const custom = document.getElementById('meal-protein-custom');
@@ -502,7 +523,7 @@ class UIManager {
         const categories = Array.isArray(recipe.categories)
             ? recipe.categories
             : recipe.category && recipe.category !== 'Other' ? [recipe.category] : [];
-        return ['Protein', 'Starch', 'Vegetables', 'Dessert']
+        return ['Protein', 'Starch', 'Fruit', 'Vegetables', 'Dessert']
             .filter(category => categories.includes(category));
     }
 
@@ -517,6 +538,7 @@ class UIManager {
         card.className = 'meal-card';
 
         const mealTypes = this.getMealTypes(meal);
+        const categories = window.repository.getMealCategories(meal);
         const tagsHtml = meal.tags.map(tag => `<span class="badge">${tag}</span>`).join('');
         const prepIcon = meal.mealPrepFriendly ? '🍱' : '';
 
@@ -528,17 +550,26 @@ class UIManager {
             </div>
             <div class="meal-card-meta">
                 <span class="badge">${mealTypes.join(', ')}</span>
+                ${categories.map(category => `<span class="badge">${category}</span>`).join('')}
                 <span class="badge">${meal.cuisine}</span>
-                <span class="badge">${meal.protein || 'N/A'}</span>
+                ${categories.includes('Protein') && meal.protein ? `<span class="badge">${meal.protein}</span>` : ''}
                 <span class="badge">${meal.difficulty}</span>
                 ${tagsHtml}
             </div>
             <div class="meal-card-actions">
-                <button class="btn btn-secondary btn-sm" onclick="window.ui.editMeal('${meal.id}')">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="window.ui.deleteMeal('${meal.id}')">Delete</button>
+                <button type="button" class="btn btn-secondary btn-sm">Edit</button>
+                <button type="button" class="btn btn-danger btn-sm">Delete</button>
             </div>
         `;
 
+        const [edit, remove] = card.querySelectorAll('.meal-card-actions button');
+        edit.addEventListener('click', () => this.editMeal(meal.id));
+        remove.addEventListener('click', () => this.deleteMeal(meal.id));
+        const photo = this.createComponentPhoto(meal, 'recipe-card-image');
+        if (photo) {
+            card.prepend(photo.image);
+            if (photo.credit) photo.image.after(this.createPhotoCredit(photo.credit));
+        }
         const recipeLinks = this.createLinkedRecipeLinks(meal.id);
         if (recipeLinks) card.querySelector('.meal-card-actions').before(recipeLinks);
 
@@ -568,10 +599,11 @@ class UIManager {
 
     filterMeals() {
         const search = document.getElementById('meal-search').value;
+        const category = document.getElementById('meal-filter-category').value;
         const type = document.getElementById('meal-filter-type').value;
         const cuisine = document.getElementById('meal-filter-cuisine').value;
 
-        let meals = window.repository.getAllMeals();
+        let meals = [...window.repository.getAllMeals(), ...window.repository.getSimpleMealComponents()];
 
         if (search) {
             meals = meals.filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
@@ -579,6 +611,10 @@ class UIManager {
 
         if (type) {
             meals = meals.filter(m => this.getMealTypes(m).includes(type));
+        }
+
+        if (category) {
+            meals = meals.filter(meal => window.repository.getMealCategories(meal).includes(category));
         }
 
         if (cuisine) {
@@ -589,7 +625,7 @@ class UIManager {
         grid.innerHTML = '';
 
         if (meals.length === 0) {
-            grid.innerHTML = '<div class="empty-state">No meals match your filters.</div>';
+            grid.innerHTML = '<div class="empty-state">No components match your filters.</div>';
             return;
         }
 
@@ -599,23 +635,32 @@ class UIManager {
     }
 
     openMealModal() {
+        if (this.photoSearchController) this.photoSearchController.abort();
         this.currentEditingMealId = null;
         this.recipeMealCreationPending = false;
-        document.getElementById('meal-modal-title').textContent = 'Add Meal';
+        document.getElementById('meal-modal-title').textContent = 'Add Component';
         document.getElementById('meal-form').reset();
+        this.resetComponentInfo();
+        this.resetComponentPhoto();
+        this.updateMealProteinVisibility();
         document.getElementById('meal-prep-days-group').style.display = 'none';
         document.getElementById('meal-modal').classList.add('active');
     }
 
     editMeal(mealId) {
-        const meal = window.repository.getMeal(mealId);
+        const meal = window.repository.getComponent(mealId);
         if (!meal) return;
 
         this.currentEditingMealId = mealId;
-        document.getElementById('meal-modal-title').textContent = 'Edit Meal';
+        this.resetComponentInfo();
+        document.getElementById('meal-modal-title').textContent = 'Edit Component';
 
         document.getElementById('meal-name').value = meal.name;
+        this.resetComponentPhoto(meal.imageUrl, meal.imageCredit);
         this.setMealTypes(this.getMealTypes(meal));
+        this.setMealCategories(window.repository.normalizeCategories(
+            Array.isArray(meal.categories) ? meal.categories : (meal.foodGroups || [])
+        ));
         document.getElementById('meal-cuisine').value = meal.cuisine;
         this.setMealProtein(meal.protein || '');
         document.getElementById('meal-difficulty').value = meal.difficulty;
@@ -630,10 +675,10 @@ class UIManager {
     }
 
     deleteMeal(mealId) {
-        if (confirm('Are you sure you want to delete this meal?')) {
+        if (confirm('Delete this component? Its recipes will be unlinked.')) {
             window.repository.deleteMeal(mealId);
             this.displayMeals();
-            alert('Meal deleted!');
+            alert('Component deleted!');
         }
     }
 
@@ -649,6 +694,8 @@ class UIManager {
             name: document.getElementById('meal-name').value,
             mealTypes,
             mealType: mealTypes[0],
+            categories: this.getCheckedValues('meal-category'),
+            imageUrl: document.getElementById('meal-image-url').value,
             cuisine: document.getElementById('meal-cuisine').value,
             protein: document.getElementById('meal-protein').value || document.getElementById('meal-protein-custom').value,
             difficulty: document.getElementById('meal-difficulty').value,
@@ -660,22 +707,30 @@ class UIManager {
         };
 
         try {
+            mealData.imageUrl = window.recipeManager.normalizeSourceUrl(mealData.imageUrl);
+            mealData.imageCredit = mealData.imageUrl === this.componentPhotoUrl ? this.componentPhotoCredit : null;
             let createdMeal = null;
             if (this.currentEditingMealId) {
-                window.repository.updateMeal(this.currentEditingMealId, mealData);
-                alert('Meal updated!');
+                if (window.repository.findSimpleMealComponent(this.currentEditingMealId)) {
+                    window.repository.updateSimpleMealComponent(this.currentEditingMealId, mealData);
+                } else {
+                    window.repository.updateMeal(this.currentEditingMealId, mealData);
+                }
+                alert('Component updated!');
             } else {
                 createdMeal = window.repository.addMeal(mealData);
-                alert('Meal added!');
+                alert('Component added!');
             }
 
             document.getElementById('meal-modal').classList.remove('active');
+            if (this.photoSearchController) this.photoSearchController.abort();
+            if (this.componentInfoController) this.componentInfoController.abort();
             this.displayMeals();
             if (this.recipeMealCreationPending && createdMeal) {
                 this.recipeMealCreationPending = false;
                 this.populateRecipeMealOptions(createdMeal.id);
                 const status = document.getElementById('recipe-import-status');
-                status.textContent = 'Meal created and selected. Save the recipe to keep this connection.';
+                status.textContent = 'Component created and selected. Save the recipe to keep this connection.';
                 status.className = 'recipe-import-status success';
                 document.getElementById('recipe-modal').classList.add('active');
             }
@@ -806,11 +861,13 @@ class UIManager {
 
         let previewHtml = '';
         if (item.plan) {
-            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const mondayFirst = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const date = item.weekStartDate ? new Date(`${item.weekStartDate}T00:00:00Z`) : null;
+            const index = date && !Number.isNaN(date.getTime()) ? (date.getUTCDay() + 6) % 7 : 0;
+            const dayNames = [...mondayFirst.slice(index), ...mondayFirst.slice(0, index)];
 
-            previewHtml = days.map((dayLabel, idx) => {
-                const dayName = dayNames[idx];
+            previewHtml = dayNames.map(dayName => {
+                const dayLabel = dayName.slice(0, 3);
                 const dayPlan = item.plan[dayName];
                 const meals = [];
 
@@ -836,7 +893,7 @@ class UIManager {
                     <div class="history-date">Approved: ${dateStr}</div>
                 </div>
                 <div class="history-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="window.ui.copyHistoryToCurrent(${item.weekNumber}, ${item.year})">Copy to Selected Week</button>
+                    <button class="btn btn-secondary btn-sm">Copy to Selected Week</button>
                 </div>
             </div>
             <div class="history-preview">
@@ -844,12 +901,16 @@ class UIManager {
             </div>
         `;
 
+        element.querySelector('.history-actions button').addEventListener('click', () => this.copyHistoryToCurrent(item.key));
         return element;
     }
 
-    copyHistoryToCurrent(weekNumber, year) {
+    copyHistoryToCurrent(key) {
         if (confirm('Copy this plan to the selected week? This will overwrite its current plan.')) {
-            window.historyManager.copyHistoryToCurrent(weekNumber, year);
+            if (!window.historyManager.copyHistoryToCurrent(key)) {
+                alert('History entry not found.');
+                return;
+            }
             this.switchPage('planner');
             alert('Plan copied to the selected week!');
         }
@@ -916,6 +977,7 @@ class UIManager {
 
         document.getElementById('cook-for-days').value = settings.cookForDays;
         document.getElementById('history-weeks').value = settings.historyWeeksToAvoid;
+        document.getElementById('planning-start-day').value = settings.planningStartDay || 'Monday';
         document.getElementById('recipe-proxy-url').value = settings.recipeProxyUrl || '';
     }
 
@@ -933,11 +995,19 @@ class UIManager {
             }
         }
 
+        const planningStartDay = document.getElementById('planning-start-day').value;
+        if (!window.planner.weekdays.includes(planningStartDay)) {
+            alert('Choose a valid planning start day.');
+            return;
+        }
         window.settingsManager.updateSettings({
             cookForDays: parseInt(document.getElementById('cook-for-days').value),
             historyWeeksToAvoid: parseInt(document.getElementById('history-weeks').value),
+            planningStartDay,
             recipeProxyUrl
         });
+        window.planner.setPlanningStartDay(planningStartDay);
+        this.displayCurrentWeek();
 
         alert('Settings saved!');
     }
@@ -988,7 +1058,7 @@ class UIManager {
             const reader = new FileReader();
             reader.onload = (event) => {
                 const count = window.repository.importMeals(event.target.result);
-                alert(`${count} meals imported successfully!`);
+                alert(`${count} component details imported successfully!`);
                 this.displayMeals();
             };
             reader.readAsText(file);
@@ -1014,28 +1084,345 @@ class UIManager {
         });
     }
 
+    resetComponentInfo() {
+        if (this.componentInfoController) this.componentInfoController.abort();
+        document.getElementById('component-info-status').textContent = '';
+        document.getElementById('component-info-results').replaceChildren();
+        document.getElementById('component-info-preview').replaceChildren();
+    }
+
+    async queryWikidata(params, signal) {
+        const query = new URLSearchParams({ ...params, format: 'json', origin: '*' });
+        const response = await fetch(`https://www.wikidata.org/w/api.php?${query}`, {
+            signal, credentials: 'omit'
+        });
+        if (!response.ok) throw new Error(`Wikidata returned HTTP ${response.status}.`);
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.info || 'Wikidata returned an error.');
+        return data;
+    }
+
+    async searchComponentInfo() {
+        const name = document.getElementById('meal-name').value.trim();
+        this.resetComponentInfo();
+        const status = document.getElementById('component-info-status');
+        if (!name) {
+            status.textContent = 'Enter a component name first.';
+            return;
+        }
+        const controller = new AbortController();
+        this.componentInfoController = controller;
+        status.textContent = 'Searching Wikidata...';
+        try {
+            const data = await this.queryWikidata({
+                action: 'wbsearchentities', search: name, language: 'en', limit: '10'
+            }, controller.signal);
+            if (controller.signal.aborted) return;
+            if (!Array.isArray(data.search)) throw new Error('Wikidata returned an unexpected search response.');
+            const results = document.getElementById('component-info-results');
+            const matches = data.search.filter(item =>
+                /^Q\d+$/.test(item.id) && typeof item.label === 'string'
+            );
+            matches.forEach(item => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-secondary btn-sm';
+                button.textContent = `${item.label}${item.description ? ` — ${item.description}` : ''}`;
+                button.addEventListener('click', () => this.loadComponentInfo(item));
+                results.appendChild(button);
+            });
+            status.textContent = matches.length
+                ? 'Select the correct food; some matches may be unrelated.'
+                : 'No matches found. Try a different component name.';
+        } catch (error) {
+            if (error.name !== 'AbortError') status.textContent = `Lookup failed: ${error.message}`;
+        } finally {
+            if (this.componentInfoController === controller) this.componentInfoController = null;
+        }
+    }
+
+    async loadComponentInfo(item) {
+        if (this.componentInfoController) this.componentInfoController.abort();
+        const controller = new AbortController();
+        this.componentInfoController = controller;
+        const status = document.getElementById('component-info-status');
+        const preview = document.getElementById('component-info-preview');
+        preview.replaceChildren();
+        status.textContent = 'Loading suggestions...';
+        try {
+            const data = await this.queryWikidata({
+                action: 'wbgetentities', ids: item.id, props: 'claims', languages: 'en'
+            }, controller.signal);
+            const entity = data.entities?.[item.id];
+            if (!entity || entity.missing !== undefined) throw new Error('The selected Wikidata item was not found.');
+            const getIds = property => (entity.claims?.[property] || [])
+                .filter(claim => claim.rank !== 'deprecated')
+                .map(claim => claim.mainsnak?.datavalue?.value?.id)
+                .filter(id => typeof id === 'string' && /^Q\d+$/.test(id));
+            const ingredientIds = [...new Set(getIds('P186'))];
+            const tagIds = [...new Set([...getIds('P31'), ...getIds('P279')])];
+            const allIds = [...new Set([...ingredientIds, ...tagIds])];
+            const requestedIds = allIds.slice(0, 50);
+            let labels = {};
+            if (requestedIds.length) {
+                const labelData = await this.queryWikidata({
+                    action: 'wbgetentities', ids: requestedIds.join('|'), props: 'labels', languages: 'en'
+                }, controller.signal);
+                if (!labelData.entities) throw new Error('Wikidata did not return labels.');
+                labels = labelData.entities;
+            }
+            if (controller.signal.aborted) return;
+            const names = ids => ids.filter(id => requestedIds.includes(id))
+                .map(id => labels[id]?.labels?.en?.value)
+                .filter(name => typeof name === 'string' && name.trim());
+            const ingredients = names(ingredientIds);
+            const tags = names(tagIds);
+            const singleFood = !ingredients.length && !ingredientIds.length &&
+                /^(?:an? )?(?:edible )?(?:fruit|vegetable|grain|seed)\b/i.test(item.description || '');
+            if (singleFood) ingredients.push(item.label);
+
+            const source = document.createElement('a');
+            source.href = `https://www.wikidata.org/wiki/${item.id}`;
+            source.target = '_blank';
+            source.rel = 'noopener noreferrer';
+            source.textContent = `Source: ${item.label} on Wikidata`;
+            const ingredientText = document.createElement('p');
+            ingredientText.textContent = `Ingredients: ${ingredients.join(', ') || 'None listed'}`;
+            const tagText = document.createElement('p');
+            tagText.textContent = `Tags: ${tags.join(', ') || 'None listed'}`;
+            const note = document.createElement('small');
+            note.textContent = singleFood
+                ? 'For this single food, its name is suggested as the ingredient. Review before adding.'
+                : 'Ingredients come from “made from material” statements and may not be a complete recipe. Review carefully.';
+            preview.append(source, ingredientText, tagText, note);
+            if (ingredients.length || tags.length) {
+                const apply = document.createElement('button');
+                apply.type = 'button';
+                apply.className = 'btn btn-primary btn-sm';
+                apply.textContent = 'Add suggestions';
+                apply.addEventListener('click', () => {
+                    for (const [fieldId, additions] of [['meal-ingredients', ingredients], ['meal-tags', tags]]) {
+                        const field = document.getElementById(fieldId);
+                        const values = window.repository.parseList(field.value);
+                        additions.forEach(value => {
+                            if (!values.some(existing => existing.toLowerCase() === value.toLowerCase())) values.push(value);
+                        });
+                        field.value = values.join(', ');
+                    }
+                    status.textContent = 'Suggestions added. Review and edit before saving.';
+                });
+                preview.appendChild(apply);
+            }
+            const unavailable = allIds.length > requestedIds.length ||
+                requestedIds.some(id => !labels[id]?.labels?.en?.value);
+            status.textContent = unavailable
+                ? 'Some suggestions were omitted because of the lookup limit or missing English labels.'
+                : ingredients.length || tags.length
+                    ? 'Review these suggestions before adding them.'
+                    : 'No ingredients or tags are available for this item.';
+        } catch (error) {
+            if (error.name !== 'AbortError') status.textContent = `Lookup failed: ${error.message}`;
+        } finally {
+            if (this.componentInfoController === controller) this.componentInfoController = null;
+        }
+    }
+
+    resetComponentPhoto(imageUrl = '', credit = null) {
+        if (this.photoSearchController) this.photoSearchController.abort();
+        this.componentPhotoUrl = imageUrl || '';
+        this.componentPhotoCredit = credit || null;
+        document.getElementById('meal-image-url').value = imageUrl || '';
+        document.getElementById('meal-photo-query').value = '';
+        document.getElementById('component-photo-status').textContent = '';
+        document.getElementById('component-photo-results').replaceChildren();
+        this.updateComponentPhotoPreview();
+        const creditContainer = document.getElementById('component-photo-credit');
+        creditContainer.replaceChildren();
+        if (credit) creditContainer.appendChild(this.createPhotoCredit(credit));
+    }
+
+    updateComponentPhotoPreview() {
+        const preview = document.getElementById('component-photo-preview');
+        preview.replaceChildren();
+        const image = this.createRecipeImage({
+            name: 'Selected component photo',
+            imageUrl: document.getElementById('meal-image-url').value
+        }, 'component-photo-preview-image');
+        if (image) {
+            image.addEventListener('error', () => {
+                document.getElementById('component-photo-status').textContent =
+                    'The photo could not be loaded. Check the URL or choose another photo.';
+            });
+            preview.appendChild(image);
+        }
+    }
+
+    createPhotoCredit(credit) {
+        const caption = document.createElement('div');
+        caption.className = 'component-photo-credit';
+        const appendLink = (text, url) => {
+            try {
+                const parsed = new URL(url);
+                if (parsed.protocol === 'https:') {
+                    const link = document.createElement('a');
+                    link.textContent = text;
+                    link.href = parsed.href;
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    caption.appendChild(link);
+                    return;
+                }
+            } catch (error) {
+                // Older imported photo credits may have invalid links.
+            }
+            caption.appendChild(document.createTextNode(`${text} (link unavailable)`));
+        };
+        appendLink(credit.title || 'Photo', credit.sourceUrl);
+        caption.appendChild(document.createTextNode(` by ${credit.author || 'unknown'} · `));
+        appendLink(credit.license || 'License', credit.licenseUrl);
+        return caption;
+    }
+
+    createComponentPhoto(component, className) {
+        const current = window.repository.getComponent(component.id) || component;
+        const ownImage = this.createRecipeImage(current, className);
+        if (ownImage) return { image: ownImage, credit: current.imageCredit || null };
+        for (const recipe of window.recipeManager.getRecipesByMeal(component.id)) {
+            const image = this.createRecipeImage(recipe, className);
+            if (image) return { image, credit: null };
+        }
+        return null;
+    }
+
+    async searchComponentPhotos() {
+        const query = document.getElementById('meal-photo-query').value.trim() ||
+            document.getElementById('meal-name').value.trim();
+        const status = document.getElementById('component-photo-status');
+        const results = document.getElementById('component-photo-results');
+        results.replaceChildren();
+        if (this.photoSearchController) this.photoSearchController.abort();
+        if (!query) {
+            status.textContent = 'Enter a component name or photo search terms first.';
+            return;
+        }
+        const controller = new AbortController();
+        this.photoSearchController = controller;
+        status.textContent = 'Searching Wikimedia Commons...';
+        const params = new URLSearchParams({
+            action: 'query',
+            generator: 'search',
+            gsrsearch: `${query} food filetype:bitmap`,
+            gsrnamespace: '6',
+            gsrlimit: '12',
+            prop: 'imageinfo',
+            iiprop: 'url|mime|extmetadata',
+            iiurlwidth: '400',
+            iiextmetadatafilter: 'Artist|LicenseShortName|LicenseUrl',
+            format: 'json',
+            formatversion: '2',
+            origin: '*'
+        });
+        try {
+            const response = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, {
+                signal: controller.signal,
+                credentials: 'omit'
+            });
+            if (!response.ok) throw new Error(`Wikimedia Commons returned HTTP ${response.status}.`);
+            const data = await response.json();
+            if (controller.signal.aborted) return;
+            if (data.error) throw new Error(data.error.info || 'Wikimedia Commons returned an error.');
+            const textFromHtml = value => {
+                const template = document.createElement('template');
+                template.innerHTML = value || '';
+                return template.content.textContent.trim();
+            };
+            const pages = (data.query?.pages || []).sort((a, b) => a.index - b.index);
+            let count = 0;
+            pages.forEach(page => {
+                const info = page.imageinfo?.[0];
+                if (!info || !['image/jpeg', 'image/png', 'image/webp'].includes(info.mime)) return;
+                const metadata = info.extmetadata || {};
+                const author = textFromHtml(metadata.Artist?.value);
+                const license = textFromHtml(metadata.LicenseShortName?.value);
+                const licenseUrl = metadata.LicenseUrl?.value;
+                if (!author || !/^(CC BY(?:-SA)? [\d.]+|CC0(?: 1\.0)?)$/i.test(license) || !licenseUrl) return;
+                let imageUrl, sourceUrl, parsedLicenseUrl;
+                try {
+                    imageUrl = new URL(info.thumburl);
+                    sourceUrl = new URL(info.descriptionurl);
+                    parsedLicenseUrl = new URL(licenseUrl);
+                } catch (error) {
+                    return;
+                }
+                if (imageUrl.protocol !== 'https:' || !imageUrl.hostname.endsWith('.wikimedia.org') ||
+                    sourceUrl.protocol !== 'https:' || sourceUrl.hostname !== 'commons.wikimedia.org' ||
+                    parsedLicenseUrl.protocol !== 'https:') return;
+                const credit = {
+                    title: page.title.replace(/^File:/, ''),
+                    author,
+                    license,
+                    sourceUrl: sourceUrl.href,
+                    licenseUrl: parsedLicenseUrl.href
+                };
+                const result = document.createElement('div');
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'component-photo-result';
+                const image = this.createRecipeImage({ imageUrl: imageUrl.href, name: credit.title }, 'component-photo-thumbnail');
+                const title = document.createElement('span');
+                title.textContent = credit.title;
+                button.append(image, title);
+                button.addEventListener('click', () => {
+                    document.getElementById('meal-image-url').value = imageUrl.href;
+                    this.componentPhotoUrl = imageUrl.href;
+                    this.componentPhotoCredit = credit;
+                    document.getElementById('component-photo-credit').replaceChildren(this.createPhotoCredit(credit));
+                    this.updateComponentPhotoPreview();
+                    results.replaceChildren();
+                    status.textContent = 'Photo selected. Save the component to keep it.';
+                });
+                result.append(button, this.createPhotoCredit(credit));
+                results.appendChild(result);
+                count++;
+            });
+            status.textContent = count
+                ? 'Choose a photo. Credits and license information will be shown with it.'
+                : 'No suitable photos found. Try different search terms or enter a photo URL.';
+        } catch (error) {
+            if (error.name !== 'AbortError') status.textContent = `Photo search failed: ${error.message}`;
+        } finally {
+            if (this.photoSearchController === controller) this.photoSearchController = null;
+        }
+    }
+
+    createRecipeImage(recipe, className) {
+        if (recipe.imageUrl) {
+            try {
+                const imageUrl = new URL(recipe.imageUrl);
+                if (imageUrl.protocol === 'http:' || imageUrl.protocol === 'https:') {
+                    const image = document.createElement('img');
+                    image.className = className;
+                    image.src = imageUrl.href;
+                    image.alt = recipe.name;
+                    image.loading = 'lazy';
+                    image.referrerPolicy = 'no-referrer';
+                    return image;
+                }
+            } catch (error) {
+                // Ignore invalid image URLs in older imported data.
+            }
+        }
+        return null;
+    }
+
     createRecipeCard(recipe) {
         const card = document.createElement('div');
         card.className = 'meal-card';
         const totalTime = recipe.prepTime + recipe.cookTime;
         const ratingStars = '★'.repeat(recipe.rating) + '☆'.repeat(5 - recipe.rating);
 
-        if (recipe.imageUrl) {
-            try {
-                const imageUrl = new URL(recipe.imageUrl);
-                if (imageUrl.protocol === 'http:' || imageUrl.protocol === 'https:') {
-                    const image = document.createElement('img');
-                    image.className = 'recipe-card-image';
-                    image.src = imageUrl.href;
-                    image.alt = recipe.name;
-                    image.loading = 'lazy';
-                    image.referrerPolicy = 'no-referrer';
-                    card.appendChild(image);
-                }
-            } catch (error) {
-                // Ignore invalid image URLs in older imported data.
-            }
-        }
+        const image = this.createRecipeImage(recipe, 'recipe-card-image');
+        if (image) card.appendChild(image);
 
         const header = document.createElement('div');
         header.className = 'meal-card-header';
@@ -1061,11 +1448,11 @@ class UIManager {
 
         card.append(header, meta);
 
-        const linkedMeal = recipe.mealId ? window.repository.getMeal(recipe.mealId) : null;
+        const linkedMeal = recipe.mealId ? window.repository.getComponent(recipe.mealId) : null;
         if (linkedMeal) {
             const mealLabel = document.createElement('div');
             mealLabel.className = 'meal-info';
-            mealLabel.textContent = `Linked meal: ${linkedMeal.name}`;
+            mealLabel.textContent = `Linked component: ${linkedMeal.name}`;
             card.appendChild(mealLabel);
         }
 
@@ -1150,8 +1537,8 @@ class UIManager {
 
     populateRecipeMealOptions(selectedMealId) {
         const select = document.getElementById('recipe-meal-link');
-        select.replaceChildren(new Option('Not linked to a meal', ''));
-        window.repository.getAllMeals().forEach(meal => {
+        select.replaceChildren(new Option('Not linked to a component', ''));
+        [...window.repository.getAllMeals(), ...window.repository.getSimpleMealComponents()].forEach(meal => {
             const option = new Option(`${meal.name} (${this.getMealTypes(meal).join(', ')})`, meal.id);
             select.appendChild(option);
         });
@@ -1168,7 +1555,7 @@ class UIManager {
     createMealFromRecipe() {
         const recipeName = document.getElementById('recipe-name').value.trim();
         if (!recipeName) {
-            document.getElementById('recipe-import-status').textContent = 'Load a recipe or enter its name before creating a meal.';
+            document.getElementById('recipe-import-status').textContent = 'Load a recipe or enter its name before creating a component.';
             document.getElementById('recipe-import-status').className = 'recipe-import-status error';
             return;
         }
@@ -1183,8 +1570,9 @@ class UIManager {
         document.getElementById('meal-ingredients').value = ingredients.join(', ');
         document.getElementById('meal-food-groups').value = categories
             .filter(category => category !== 'Dessert').join(', ');
+        this.setMealCategories(categories);
         document.getElementById('meal-tags').value = document.getElementById('recipe-tags').value;
-        this.setMealProtein(this.suggestRecipeProtein());
+        this.setMealProtein(categories.includes('Protein') ? this.suggestRecipeProtein() : '');
 
         this.recipeMealCreationPending = true;
         document.getElementById('recipe-modal').classList.remove('active');
@@ -1319,15 +1707,24 @@ class UIManager {
             status.textContent = `Recipe details loaded. Suggested category: ${suggestedCategory}.${suggestedProtein ? ` Suggested protein: ${suggestedProtein}.` : ''} Review and edit before saving.`;
             status.className = 'recipe-import-status success';
         } catch (error) {
-            const hasProxy = Boolean(window.settingsManager.getSettings().recipeProxyUrl);
-            const nextStep = hasProxy
-                ? 'Check that the Worker is deployed and allows this site origin and recipe domain.'
-                : window.location.protocol === 'file:'
-                    ? error instanceof TypeError
-                        ? 'Start the local recipe proxy using start-local-proxy.bat, then try again.'
-                        : 'Check the recipe link and try again.'
-                    : 'Some sites block direct browser access (CORS). Configure a recipe proxy in Settings, or enter the details manually.';
-            status.textContent = `${error.message} ${nextStep}`;
+            if (/^The (?:recipe )?website returned 402\.$/.test(error.message)) {
+                const sourceField = document.getElementById('recipe-source-url');
+                const savedLink = !sourceField.value.trim();
+                if (savedLink) sourceField.value = parsedUrl.href;
+                status.textContent = `The recipe website declined automated access (HTTP 402). ${
+                    savedLink ? 'The link was copied to Original recipe link.' : 'Your existing original recipe link was kept.'
+                } Open the link in your browser and enter the recipe details manually.`;
+            } else {
+                const hasProxy = Boolean(window.settingsManager.getSettings().recipeProxyUrl);
+                const nextStep = hasProxy
+                    ? 'Check that the Worker is deployed and allows this site origin and recipe domain.'
+                    : window.location.protocol === 'file:'
+                        ? error instanceof TypeError
+                            ? 'Start the local recipe proxy using start-local-proxy.bat, then try again.'
+                            : 'Check the recipe link and try again.'
+                        : 'Some sites block direct browser access (CORS). Configure a recipe proxy in Settings, or enter the details manually.';
+                status.textContent = `${error.message} ${nextStep}`;
+            }
             status.className = 'recipe-import-status error';
         } finally {
             button.disabled = false;
@@ -1513,6 +1910,9 @@ class UIManager {
         if (categoryTerms(['starch', 'rice', 'potatoes?', 'pasta', 'noodles?', 'bread', 'couscous', 'quinoa', 'oats?', 'barley', 'polenta', 'corn'])) {
             return 'Starch';
         }
+        if (categoryTerms(['fruits?', 'apples?', 'bananas?', 'berries', 'strawberries', 'blueberries', 'oranges?', 'pears?', 'peaches?', 'grapes?'])) {
+            return 'Fruit';
+        }
         if (categoryTerms(['vegetables?', 'zucchini', 'courgette', 'squash', 'broccoli', 'carrots?', 'spinach', 'kale', 'cauliflower', 'cabbage', 'peppers?', 'tomatoes?', 'onions?', 'eggplant', 'aubergine', 'mushrooms?'])) {
             return 'Vegetables';
         }
@@ -1521,10 +1921,52 @@ class UIManager {
 
     viewRecipe(recipeId) {
         const recipe = window.recipeManager.getRecipe(recipeId);
-        if (!recipe) return;
+        if (!recipe) {
+            alert('Recipe not found.');
+            return;
+        }
+        this.showRecipeDetails([recipe]);
+    }
 
-        const text = window.recipeManager.exportRecipe(recipeId);
-        alert(text);
+    viewRecipesForMeal(mealId) {
+        this.showRecipeDetails(window.recipeManager.getRecipesByMeal(mealId));
+    }
+
+    showRecipeDetails(recipes) {
+        const content = document.getElementById('recipe-view-content');
+        content.replaceChildren();
+        if (!recipes.length) {
+            content.textContent = 'No recipe is linked to this component.';
+        }
+        recipes.forEach(recipe => {
+            const section = document.createElement('section');
+            section.className = 'recipe-view-section';
+            const image = this.createRecipeImage(recipe, 'recipe-card-image');
+            if (image) section.appendChild(image);
+            const text = document.createElement('pre');
+            text.className = 'recipe-view-text';
+            text.textContent = window.recipeManager.exportRecipe(recipe.id);
+            section.appendChild(text);
+            if (recipe.sourceUrl) {
+                try {
+                    const sourceUrl = new URL(recipe.sourceUrl);
+                    if (sourceUrl.protocol === 'http:' || sourceUrl.protocol === 'https:') {
+                        const link = document.createElement('a');
+                        link.href = sourceUrl.href;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                        link.textContent = 'Open original recipe';
+                        section.appendChild(link);
+                    }
+                } catch (error) {
+                    // Ignore invalid source URLs in older imported data.
+                }
+            }
+            content.appendChild(section);
+        });
+        const modal = document.getElementById('recipe-view-modal');
+        modal.classList.add('active');
+        modal.querySelector('.recipe-view-close').focus();
     }
 
     editRecipe(recipeId) {

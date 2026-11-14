@@ -346,6 +346,10 @@ body {
 }
 
 .meal-slot-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
     font-size: 0.85rem;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -358,6 +362,7 @@ body {
     align-items: center;
     gap: var(--spacing-sm);
     text-transform: none;
+    white-space: nowrap;
     cursor: pointer;
 }
 
@@ -372,7 +377,6 @@ body {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     padding: var(--spacing-md);
-    cursor: pointer;
     transition: var(--transition);
     min-height: 60px;
     display: flex;
@@ -383,6 +387,52 @@ body {
 .meal-item:hover {
     border-color: var(--primary-color);
     box-shadow: var(--shadow-sm);
+}
+
+.planner-meal-image {
+    display: block;
+    width: 100%;
+    height: 80px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-sm);
+}
+
+.planner-meal-open {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.planner-components {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-sm);
+}
+
+.planner-component {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    overflow-wrap: anywhere;
+}
+
+.planner-component-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.planner-add-component {
+    min-width: 2rem;
+    margin-top: auto;
 }
 
 .meal-name {
@@ -517,90 +567,8 @@ body {
     flex: 1;
 }
 
-.meal-components-panel {
-    background-color: var(--bg-secondary);
-    border-radius: var(--border-radius);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
-}
-
-.meal-components-panel h3 {
-    margin-bottom: var(--spacing-sm);
-}
-
-.meal-components-panel > p {
+.meal-components-intro {
     color: var(--text-secondary);
-    margin-bottom: var(--spacing-md);
-}
-
-.meal-components-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--spacing-md);
-}
-
-.meal-component-column {
-    min-width: 0;
-    padding: var(--spacing-md);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    background-color: var(--bg-primary);
-}
-
-.meal-component-column h4 {
-    margin-bottom: var(--spacing-md);
-}
-
-.meal-component-form {
-    display: flex;
-    gap: var(--spacing-sm);
-}
-
-.meal-component-form input {
-    min-width: 0;
-    flex: 1;
-    padding: var(--spacing-sm);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    font: inherit;
-}
-
-.meal-component-items {
-    display: grid;
-    gap: var(--spacing-sm);
-    margin: var(--spacing-md) 0 0;
-    padding: 0;
-    list-style: none;
-}
-
-.meal-component-items li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-sm);
-    overflow-wrap: anywhere;
-}
-
-.meal-component-empty {
-    color: var(--text-secondary);
-}
-
-.meal-components-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    flex-wrap: wrap;
-    margin-top: var(--spacing-md);
-}
-
-.meal-components-actions span {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.meal-list-heading {
     margin-bottom: var(--spacing-md);
 }
 
@@ -938,6 +906,22 @@ body {
     color: var(--text-primary);
 }
 
+.recipe-view-close {
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.recipe-view-section + .recipe-view-section {
+    margin-top: var(--spacing-xl);
+}
+
+.recipe-view-text {
+    font: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 .modal-content h2 {
     margin-bottom: var(--spacing-lg);
 }
@@ -947,6 +931,84 @@ body {
     display: grid;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-lg);
+}
+
+#meal-protein-group[hidden] {
+    display: none;
+}
+
+.component-info-results {
+    display: grid;
+    gap: var(--spacing-sm);
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.component-info-results button {
+    text-align: left;
+}
+
+#component-info-preview:not(:empty) {
+    display: grid;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+}
+
+.component-info-results + #component-info-preview p {
+    margin: 0;
+}
+
+.component-photo-search {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.component-photo-search input {
+    min-width: 0;
+    flex: 1;
+}
+
+.component-photo-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--spacing-md);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.component-photo-result {
+    width: 100%;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: inherit;
+    cursor: pointer;
+    overflow-wrap: anywhere;
+}
+
+.component-photo-thumbnail {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+}
+
+.component-photo-preview-image {
+    display: block;
+    max-width: 220px;
+    max-height: 150px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+}
+
+.component-photo-credit {
+    font-size: 0.7rem;
+    overflow-wrap: anywhere;
 }
 
 .checkbox-options {
@@ -988,6 +1050,7 @@ body {
 .form-group input[type="text"],
 .form-group input[type="number"],
 .form-group input[type="email"],
+.form-group input[type="url"],
 .form-group input[type="date"],
 .form-group textarea,
 .form-group select {
@@ -1101,6 +1164,9 @@ body {
     cursor: pointer;
     transition: var(--transition);
     border: 1px solid transparent;
+    color: var(--text-primary);
+    font: inherit;
+    text-align: left;
 }
 
 .meal-picker-item:hover {
@@ -1177,9 +1243,6 @@ body {
         grid-template-columns: 1fr;
     }
 
-    .meal-components-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
 }
 
 @media (max-width: 480px) {
@@ -1195,9 +1258,6 @@ body {
         grid-template-columns: 1fr;
     }
 
-    .meal-components-grid {
-        grid-template-columns: 1fr;
-    }
 
     .quick-actions {
         flex-direction: column;
