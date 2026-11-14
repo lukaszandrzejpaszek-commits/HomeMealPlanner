@@ -268,9 +268,9 @@ localStorage (Browser)
 
 ## 🎯 MVP Achievements
 
-✅ **Requirement Met**: No backend/database
-- Uses localStorage only
-- No server needed
+✅ **Requirement Met**: No backend/database for planner data
+- Meal, recipe, settings, and plan data stay in localStorage
+- An optional Cloudflare Worker only fetches recipe-page HTML when a site blocks direct browser access
 
 ✅ **Requirement Met**: No framework
 - Pure vanilla JavaScript
@@ -377,7 +377,7 @@ The modular design supports adding these features without major refactoring.
 **HomeMealPlanner** is a complete, functional MVP that meets all requirements:
 
 ✅ Fully functional single-page application
-✅ No backend, no database, no framework
+✅ No database or backend required for planning; optional recipe-fetch Worker
 ✅ Pure HTML/CSS/JavaScript
 ✅ localStorage data persistence
 ✅ Responsive design

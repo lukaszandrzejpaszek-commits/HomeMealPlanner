@@ -10,10 +10,12 @@ class Repository {
     }
 
     addMeal(mealData) {
+        const mealTypes = this.normalizeMealTypes(mealData.mealTypes || mealData.mealType);
         const meal = {
             id: this.generateId(),
             name: mealData.name,
-            mealType: mealData.mealType,
+            mealType: mealTypes[0] || mealData.mealType || '',
+            mealTypes,
             cuisine: mealData.cuisine || 'Other',
             protein: mealData.protein || '',
             foodGroups: this.parseList(mealData.foodGroups),
@@ -45,7 +47,8 @@ class Repository {
         meals[index] = {
             ...meals[index],
             name: mealData.name,
-            mealType: mealData.mealType,
+            mealType: this.normalizeMealTypes(mealData.mealTypes || mealData.mealType)[0] || mealData.mealType || '',
+            mealTypes: this.normalizeMealTypes(mealData.mealTypes || mealData.mealType),
             cuisine: mealData.cuisine || 'Other',
             protein: mealData.protein || '',
             foodGroups: this.parseList(mealData.foodGroups),
@@ -83,7 +86,7 @@ class Repository {
 
     getMealsByType(type) {
         const meals = this.storage.get('meals', []);
-        return meals.filter(m => m.mealType === type);
+        return meals.filter(meal => this.normalizeMealTypes(meal.mealTypes || meal.mealType).includes(type));
     }
 
     getMealComponents() {
@@ -118,6 +121,7 @@ class Repository {
                         id: `components:${JSON.stringify([protein, starch, vegetable])}`,
                         name: `${protein} with ${starch} and ${vegetable}`,
                         mealType: type,
+                        mealTypes: [type],
                         cuisine: 'Home',
                         protein,
                         foodGroups: [protein, starch, vegetable],
@@ -131,7 +135,7 @@ class Repository {
                 });
             });
         });
-        return combinations;
+        return [...combinations, ...this.getMealsByType(type)];
     }
 
     searchMeals(query) {
@@ -149,7 +153,7 @@ class Repository {
         let meals = this.storage.get('meals', []);
 
         if (type) {
-            meals = meals.filter(m => m.mealType === type);
+            meals = meals.filter(meal => this.normalizeMealTypes(meal.mealTypes || meal.mealType).includes(type));
         }
 
         if (cuisine) {
@@ -191,9 +195,12 @@ class Repository {
             }
 
             // Validate and import
-            const validMeals = meals.filter(m =>
-                m.name && m.mealType && (m.mealType === 'Breakfast' || m.mealType === 'Lunch' || m.mealType === 'Dinner')
-            );
+            const validMeals = meals
+                .filter(meal => meal.name && this.normalizeMealTypes(meal.mealTypes || meal.mealType).length)
+                .map(meal => {
+                    const mealTypes = this.normalizeMealTypes(meal.mealTypes || meal.mealType);
+                    return { ...meal, mealType: meal.mealType || mealTypes[0], mealTypes };
+                });
 
             this.storage.set('meals', validMeals);
             return validMeals.length;
@@ -204,6 +211,12 @@ class Repository {
     }
 
     // Helper to parse comma-separated strings into arrays
+    normalizeMealTypes(input) {
+        const supportedTypes = ['Breakfast', 'Lunch', 'Dinner'];
+        const values = Array.isArray(input) ? input : [input];
+        return supportedTypes.filter(type => values.includes(type));
+    }
+
     parseList(input) {
         if (Array.isArray(input)) {
             return input.filter(i => i && typeof i === 'string').map(i => i.trim());

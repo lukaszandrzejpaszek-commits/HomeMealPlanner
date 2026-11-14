@@ -13,7 +13,8 @@ class SettingsManager {
         return {
             cookForDays: 2,
             historyWeeksToAvoid: 4,
-            darkMode: false
+            darkMode: false,
+            recipeProxyUrl: ''
         };
     }
 

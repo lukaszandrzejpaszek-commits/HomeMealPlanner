@@ -30,7 +30,10 @@ A lightweight, single-page web application for family meal planning with intelli
 - **School Lunch Support** - Choose school lunch separately for each day in the weekly planner
 - **Settings** - Customize meal planning parameters
 - **Export/Import** - Export meals and recipes as JSON
-- **Meal Components** - Manage proteins, starches, and vegetables in separate columns; generated breakfasts, lunches, and dinners combine one item from each (school lunches are skipped). Saved complete meals are used when a component category is empty.
+- **Meal Components** - Manage proteins, starches, and vegetables in separate columns; generated meals combine one item from each (school lunches are skipped). Saved complete meals are also planning candidates.
+- **Multi-Type Meals** - Make a saved meal available for any combination of breakfast, lunch, and dinner
+- **Recipe-to-Meal** - Create a meal prefilled from a saved recipe, with an editable protein suggestion
+- **Optional Recipe Proxy** - Use a Cloudflare Worker to fetch recipe pages from domains that block direct browser access
 
 ## Technology Stack
 
@@ -38,6 +41,7 @@ A lightweight, single-page web application for family meal planning with intelli
 - **CSS3** - Responsive design with CSS Grid and Flexbox
 - **Vanilla JavaScript** - No frameworks or dependencies
 - **localStorage** - Client-side data persistence
+- **Cloudflare Workers** - Optional recipe-page fetch proxy; planner and recipe data remain client-side
 
 ## Project Structure
 
@@ -57,6 +61,9 @@ HomeMealPlanner/
 │   ├── history.js       # History management
 │   ├── settings.js      # Settings management
 │   └── ui.js            # UI and event handling
+├── worker/
+│   ├── recipe-proxy.js  # Optional Cloudflare Worker for recipe-page fetching
+│   └── wrangler.toml    # Worker allowlist and deployment configuration
 └── data/                # Data storage (in localStorage)
     ├── meals.json
     ├── recipes.json
@@ -86,7 +93,7 @@ HomeMealPlanner/
 2. Click **+ Add Meal**
 3. Fill in meal details:
    - Name
-   - Type (Breakfast, Lunch, Dinner)
+   - Meal types (select any combination of Breakfast, Lunch, Dinner)
    - Cuisine
    - Protein type
    - Difficulty level
@@ -99,10 +106,11 @@ HomeMealPlanner/
 
 1. Go to **Recipes** page
 2. Click **+ Add Recipe**
-3. Enter a recipe webpage URL and click **Load Recipe** to import Schema.org recipe details, including the image when provided. Review the preview before saving. Import requires the site to permit browser access (CORS).
-4. Choose a meal from **Connect to a meal** to associate the recipe with it.
-5. If the site blocks browser access (CORS) or has no supported structured recipe data, enter the URL as the original recipe link and fill in the details manually.
-6. Fill or review recipe details:
+3. Enter a recipe webpage URL and click **Load Recipe** to import Schema.org recipe details, including the image when provided. Review the preview and suggested category/protein before saving.
+4. Choose one or more recipe categories: Protein, Starch, Vegetables, or Dessert.
+5. To create a meal from the recipe, click **Create a new meal from this recipe**, choose one or more meal types, then save the meal. It is selected in **Connect to a meal**; save the recipe to keep the link.
+6. If a site blocks direct browser access, deploy the optional Cloudflare Worker described below and enter its URL under **Settings > Recipe import proxy URL**. Without a configured proxy, direct import remains best-effort.
+7. Fill or review recipe details:
    - Name
    - Difficulty
    - Prep and cook time
@@ -112,9 +120,21 @@ HomeMealPlanner/
    - Notes
    - Tags
 
-### Dinner Component Options
+### Meal Component Options
 
-On the **Meals** page, save lists of proteins, starches, and vegetables. Once all three lists have at least one option, generated dinners combine one item from each list. If any list is empty, the planner continues using saved dinner meals instead.
+On the **Meals** page, save lists of proteins, starches, and vegetables. Once all three lists have at least one option, generated plans can use combinations with one item from each list, as well as saved complete meals. Each saved meal can be assigned to any combination of breakfast, lunch, and dinner.
+
+### Deploying the Optional Recipe Proxy
+
+The planner and its data remain static and client-side. The optional Cloudflare Worker only fetches recipe-page HTML, so the browser does not need to access a recipe site directly.
+
+1. Install or run Wrangler and authenticate with Cloudflare (`npx wrangler login`).
+2. From the `worker/` directory, deploy with `npx wrangler deploy`.
+3. `worker/wrangler.toml` allows the GitHub Pages origin and `mrishtanna.com` by default. Change `ALLOWED_ORIGINS` to the exact origin serving this app and add any other recipe domains to `ALLOWED_RECIPE_HOSTS`, then deploy again.
+4. Copy the Worker URL shown by Wrangler (for example, `https://home-meal-planner-recipe-proxy.<account>.workers.dev`).
+5. Open HomeMealPlanner from its HTTPS GitHub Pages URL, go to **Settings**, paste the Worker URL into **Recipe import proxy URL**, and save.
+
+The proxy allows only configured HTTPS recipe domains, follows redirects only within the allowlist, and limits response size and request time. It does not store recipe data. Opening `index.html` from `file://` is not allowed as a proxy origin; use the HTTPS site URL.
 
 ### Generating a Week Plan
 
@@ -161,6 +181,7 @@ On the **Meals** page, save lists of proteins, starches, and vegetables. Once al
 Configure:
 - Days to cook meals for
 - Weeks of history to avoid repeating
+- Optional HTTPS recipe import proxy URL
 - Dark mode preference
 
 ### Backup & Restore
@@ -190,11 +211,12 @@ The planner uses a scoring system for each meal placement:
 ## Data Storage
 
 All data is stored in the browser's localStorage:
-- No backend required
+- No backend required for meal planning and data storage
 - No database needed
 - Works offline
 - Data persists across sessions
 - Export/import for backup and sharing
+- An optional Cloudflare Worker is used only for recipe-page fetching
 
 ## Browser Compatibility
 

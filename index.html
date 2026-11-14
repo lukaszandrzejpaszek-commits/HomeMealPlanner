@@ -224,6 +224,12 @@
                     </div>
 
                     <div class="setting-group">
+                        <label for="recipe-proxy-url">Recipe import proxy URL (optional):</label>
+                        <input type="url" id="recipe-proxy-url" placeholder="https://your-worker.workers.dev">
+                        <small>Configure a deployed Cloudflare Worker to import from sites that block direct browser access. See the README for setup.</small>
+                    </div>
+
+                    <div class="setting-group">
                         <button id="btn-backup" class="btn btn-secondary">Backup Data</button>
                         <button id="btn-restore" class="btn btn-secondary">Restore Data</button>
                     </div>
@@ -254,15 +260,15 @@
                     <input type="text" id="meal-name" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="meal-type">Type:</label>
-                    <select id="meal-type" required>
-                        <option value="">Select Type</option>
-                        <option value="Breakfast">Breakfast</option>
-                        <option value="Lunch">Lunch</option>
-                        <option value="Dinner">Dinner</option>
-                    </select>
-                </div>
+                <fieldset class="form-group checkbox-options">
+                    <legend>Meal types (select all that apply):</legend>
+                    <div class="checkbox-options-grid">
+                        <label><input type="checkbox" name="meal-type" value="Breakfast"> Breakfast</label>
+                        <label><input type="checkbox" name="meal-type" value="Lunch"> Lunch</label>
+                        <label><input type="checkbox" name="meal-type" value="Dinner"> Dinner</label>
+                    </div>
+                    <small>Select at least one meal type.</small>
+                </fieldset>
 
                 <div class="form-group">
                     <label for="meal-cuisine">Cuisine:</label>
@@ -322,7 +328,7 @@
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Save Meal</button>
-                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('meal-modal').classList.remove('active')">Cancel</button>
+                    <button type="button" id="btn-cancel-meal" class="btn btn-secondary">Cancel</button>
                 </div>
             </form>
         </div>
@@ -363,22 +369,26 @@
                     </select>
                 </div>
 
+                <div class="form-group" id="recipe-create-meal-group" hidden>
+                    <button type="button" id="btn-create-meal-from-recipe" class="btn btn-secondary">Create a new meal from this recipe</button>
+                    <small class="recipe-import-help">Opens a pre-filled meal form. Choose its type and save to link it to this recipe.</small>
+                </div>
+
                 <div class="form-group">
                     <label for="recipe-name">Recipe Name:</label>
                     <input type="text" id="recipe-name" required>
                 </div>
 
-                <div class="form-group">
-                    <label for="recipe-category">Recipe Category:</label>
-                    <select id="recipe-category">
-                        <option value="Other">Other / unsure</option>
-                        <option value="Dessert">Dessert</option>
-                        <option value="Protein">Protein</option>
-                        <option value="Starch">Starch</option>
-                        <option value="Vegetables">Vegetables</option>
-                    </select>
-                    <small class="recipe-import-help">Link imports suggest a category. Change it here or later with Edit.</small>
-                </div>
+                <fieldset class="form-group checkbox-options">
+                    <legend>Recipe categories (select all that apply):</legend>
+                    <div class="checkbox-options-grid">
+                        <label><input type="checkbox" name="recipe-category" value="Protein"> Protein</label>
+                        <label><input type="checkbox" name="recipe-category" value="Starch"> Starch</label>
+                        <label><input type="checkbox" name="recipe-category" value="Vegetables"> Vegetables</label>
+                        <label><input type="checkbox" name="recipe-category" value="Dessert"> Dessert</label>
+                    </div>
+                    <small class="recipe-import-help">Link imports suggest a category. You can select more than one or change them before saving.</small>
+                </fieldset>
 
                 <div class="form-group">
                     <label for="recipe-difficulty">Difficulty:</label>

@@ -5,6 +5,7 @@ class UIManager {
         this.currentEditingMealId = null;
         this.currentEditingRuleId = null;
         this.currentMealPickerContext = null;
+        this.recipeMealCreationPending = false;
     }
 
     init() {
@@ -47,6 +48,7 @@ class UIManager {
         document.getElementById('meal-filter-type').addEventListener('change', () => this.filterMeals());
         document.getElementById('meal-filter-cuisine').addEventListener('change', () => this.filterMeals());
         document.getElementById('meal-form').addEventListener('submit', (e) => this.saveMeal(e));
+        document.getElementById('btn-cancel-meal').addEventListener('click', () => this.cancelMealModal());
         document.getElementById('meal-prep-friendly').addEventListener('change', (e) => {
             document.getElementById('meal-prep-days-group').style.display = e.target.checked ? 'grid' : 'none';
         });
@@ -61,7 +63,13 @@ class UIManager {
             document.getElementById('recipe-search').addEventListener('input', () => this.filterRecipes());
             document.getElementById('recipe-form').addEventListener('submit', (e) => this.saveRecipe(e));
             document.getElementById('btn-import-recipe-url').addEventListener('click', () => this.importRecipeFromUrl());
-            ['recipe-name', 'recipe-category', 'recipe-source-url', 'recipe-image-url', 'recipe-ingredients', 'recipe-instructions'].forEach(id => {
+            document.getElementById('btn-create-meal-from-recipe').addEventListener('click', () => this.createMealFromRecipe());
+            document.getElementById('recipe-meal-link').addEventListener('change', () => this.updateCreateMealButtonVisibility());
+            document.getElementById('recipe-name').addEventListener('input', () => this.updateCreateMealButtonVisibility());
+            document.querySelectorAll('input[name="recipe-category"]').forEach(input => {
+                input.addEventListener('change', () => this.refreshRecipePreview());
+            });
+            ['recipe-name', 'recipe-source-url', 'recipe-image-url', 'recipe-ingredients', 'recipe-instructions'].forEach(id => {
                 document.getElementById(id).addEventListener('input', () => this.refreshRecipePreview());
             });
         }
@@ -84,7 +92,7 @@ class UIManager {
         // Modal close buttons
         document.querySelectorAll('.close-modal').forEach(btn => {
             btn.addEventListener('click', (event) => {
-                event.currentTarget.closest('.modal').classList.remove('active');
+                this.closeModal(event.currentTarget.closest('.modal'));
             });
         });
 
@@ -92,10 +100,22 @@ class UIManager {
         document.querySelectorAll('.modal').forEach(modal => {
             modal.addEventListener('click', (event) => {
                 if (event.target === modal) {
-                    modal.classList.remove('active');
+                    this.closeModal(modal);
                 }
             });
         });
+    }
+
+    closeModal(modal) {
+        modal.classList.remove('active');
+        if (modal.id === 'meal-modal' && this.recipeMealCreationPending) {
+            this.recipeMealCreationPending = false;
+            document.getElementById('recipe-modal').classList.add('active');
+        }
+    }
+
+    cancelMealModal() {
+        this.closeModal(document.getElementById('meal-modal'));
     }
 
     loadInitialState() {
@@ -428,10 +448,52 @@ class UIManager {
         document.getElementById('meal-components-status').textContent = `${removed} removed.`;
     }
 
+    getCheckedValues(name) {
+        return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`))
+            .map(input => input.value);
+    }
+
+    getMealTypes(meal) {
+        const supportedTypes = ['Breakfast', 'Lunch', 'Dinner'];
+        const mealTypes = Array.isArray(meal.mealTypes) && meal.mealTypes.length
+            ? meal.mealTypes
+            : [meal.mealType];
+        return supportedTypes.filter(type => mealTypes.includes(type));
+    }
+
+    setMealTypes(mealTypes) {
+        document.querySelectorAll('input[name="meal-type"]').forEach(input => {
+            input.checked = mealTypes.includes(input.value);
+        });
+    }
+
+    setMealProtein(protein) {
+        const select = document.getElementById('meal-protein');
+        const custom = document.getElementById('meal-protein-custom');
+        const hasOption = Array.from(select.options).some(option => option.value === protein);
+        select.value = hasOption ? protein : '';
+        custom.value = hasOption ? '' : protein;
+    }
+
+    getRecipeCategories(recipe) {
+        const categories = Array.isArray(recipe.categories)
+            ? recipe.categories
+            : recipe.category && recipe.category !== 'Other' ? [recipe.category] : [];
+        return ['Protein', 'Starch', 'Vegetables', 'Dessert']
+            .filter(category => categories.includes(category));
+    }
+
+    setRecipeCategories(categories) {
+        document.querySelectorAll('input[name="recipe-category"]').forEach(input => {
+            input.checked = categories.includes(input.value);
+        });
+    }
+
     createMealCard(meal) {
         const card = document.createElement('div');
         card.className = 'meal-card';
 
+        const mealTypes = this.getMealTypes(meal);
         const tagsHtml = meal.tags.map(tag => `<span class="badge">${tag}</span>`).join('');
         const prepIcon = meal.mealPrepFriendly ? '🍱' : '';
 
@@ -442,7 +504,7 @@ class UIManager {
                 </div>
             </div>
             <div class="meal-card-meta">
-                <span class="badge">${meal.mealType}</span>
+                <span class="badge">${mealTypes.join(', ')}</span>
                 <span class="badge">${meal.cuisine}</span>
                 <span class="badge">${meal.protein || 'N/A'}</span>
                 <span class="badge">${meal.difficulty}</span>
@@ -477,7 +539,7 @@ class UIManager {
         }
 
         if (type) {
-            meals = meals.filter(m => m.mealType === type);
+            meals = meals.filter(m => this.getMealTypes(m).includes(type));
         }
 
         if (cuisine) {
@@ -499,6 +561,7 @@ class UIManager {
 
     openMealModal() {
         this.currentEditingMealId = null;
+        this.recipeMealCreationPending = false;
         document.getElementById('meal-modal-title').textContent = 'Add Meal';
         document.getElementById('meal-form').reset();
         document.getElementById('meal-prep-days-group').style.display = 'none';
@@ -513,9 +576,9 @@ class UIManager {
         document.getElementById('meal-modal-title').textContent = 'Edit Meal';
 
         document.getElementById('meal-name').value = meal.name;
-        document.getElementById('meal-type').value = meal.mealType;
+        this.setMealTypes(this.getMealTypes(meal));
         document.getElementById('meal-cuisine').value = meal.cuisine;
-        document.getElementById('meal-protein').value = meal.protein || '';
+        this.setMealProtein(meal.protein || '');
         document.getElementById('meal-difficulty').value = meal.difficulty;
         document.getElementById('meal-prep-friendly').checked = meal.mealPrepFriendly;
         document.getElementById('meal-prep-days').value = meal.mealPrepDays || 2;
@@ -537,10 +600,16 @@ class UIManager {
 
     saveMeal(e) {
         e.preventDefault();
+        const mealTypes = this.getCheckedValues('meal-type');
+        if (!mealTypes.length) {
+            alert('Select at least one meal type.');
+            return;
+        }
 
         const mealData = {
             name: document.getElementById('meal-name').value,
-            mealType: document.getElementById('meal-type').value,
+            mealTypes,
+            mealType: mealTypes[0],
             cuisine: document.getElementById('meal-cuisine').value,
             protein: document.getElementById('meal-protein').value || document.getElementById('meal-protein-custom').value,
             difficulty: document.getElementById('meal-difficulty').value,
@@ -552,16 +621,25 @@ class UIManager {
         };
 
         try {
+            let createdMeal = null;
             if (this.currentEditingMealId) {
                 window.repository.updateMeal(this.currentEditingMealId, mealData);
                 alert('Meal updated!');
             } else {
-                window.repository.addMeal(mealData);
+                createdMeal = window.repository.addMeal(mealData);
                 alert('Meal added!');
             }
 
             document.getElementById('meal-modal').classList.remove('active');
             this.displayMeals();
+            if (this.recipeMealCreationPending && createdMeal) {
+                this.recipeMealCreationPending = false;
+                this.populateRecipeMealOptions(createdMeal.id);
+                const status = document.getElementById('recipe-import-status');
+                status.textContent = 'Meal created and selected. Save the recipe to keep this connection.';
+                status.className = 'recipe-import-status success';
+                document.getElementById('recipe-modal').classList.add('active');
+            }
         } catch (error) {
             alert('Error: ' + error.message);
         }
@@ -797,12 +875,27 @@ class UIManager {
 
         document.getElementById('cook-for-days').value = settings.cookForDays;
         document.getElementById('history-weeks').value = settings.historyWeeksToAvoid;
+        document.getElementById('recipe-proxy-url').value = settings.recipeProxyUrl || '';
     }
 
     saveSettings() {
+        const recipeProxyUrl = document.getElementById('recipe-proxy-url').value.trim();
+        if (recipeProxyUrl) {
+            try {
+                const parsedProxyUrl = new URL(recipeProxyUrl);
+                if (parsedProxyUrl.protocol !== 'https:' || parsedProxyUrl.username || parsedProxyUrl.password) {
+                    throw new Error('The recipe proxy URL must use HTTPS and cannot include credentials.');
+                }
+            } catch (error) {
+                alert(error.message || 'Enter a valid HTTPS recipe proxy URL.');
+                return;
+            }
+        }
+
         window.settingsManager.updateSettings({
             cookForDays: parseInt(document.getElementById('cook-for-days').value),
-            historyWeeksToAvoid: parseInt(document.getElementById('history-weeks').value)
+            historyWeeksToAvoid: parseInt(document.getElementById('history-weeks').value),
+            recipeProxyUrl
         });
 
         alert('Settings saved!');
@@ -917,7 +1010,7 @@ class UIManager {
 
         const meta = document.createElement('div');
         meta.className = 'meal-card-meta';
-        [ recipe.category || 'Other', `⏱️ ${totalTime}min`, recipe.difficulty, `👥 ${recipe.servings}`, ...(recipe.tags || []) ]
+        [ this.getRecipeCategoryLabel(recipe), `⏱️ ${totalTime}min`, recipe.difficulty, `👥 ${recipe.servings}`, ...(recipe.tags || []) ]
             .forEach(label => {
                 const badge = document.createElement('span');
                 badge.className = 'badge';
@@ -979,7 +1072,7 @@ class UIManager {
         if (search) {
             filtered = recipes.filter(r =>
                 r.name.toLowerCase().includes(search.toLowerCase()) ||
-                (r.category || '').toLowerCase().includes(search.toLowerCase()) ||
+                this.getRecipeCategoryLabel(r).toLowerCase().includes(search.toLowerCase()) ||
                 r.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
             );
         }
@@ -999,6 +1092,7 @@ class UIManager {
 
     openRecipeModal() {
         this.currentEditingRecipeId = null;
+        this.recipeMealCreationPending = false;
         document.getElementById('recipe-modal-title').textContent = 'Add Recipe';
         document.getElementById('recipe-form').reset();
         document.getElementById('recipe-import-status').textContent = '';
@@ -1017,10 +1111,71 @@ class UIManager {
         const select = document.getElementById('recipe-meal-link');
         select.replaceChildren(new Option('Not linked to a meal', ''));
         window.repository.getAllMeals().forEach(meal => {
-            const option = new Option(`${meal.name} (${meal.mealType})`, meal.id);
+            const option = new Option(`${meal.name} (${this.getMealTypes(meal).join(', ')})`, meal.id);
             select.appendChild(option);
         });
         select.value = selectedMealId || '';
+        this.updateCreateMealButtonVisibility();
+    }
+
+    updateCreateMealButtonVisibility() {
+        const recipeName = document.getElementById('recipe-name').value.trim();
+        const linkedMealId = document.getElementById('recipe-meal-link').value;
+        document.getElementById('recipe-create-meal-group').hidden = !recipeName || Boolean(linkedMealId);
+    }
+
+    createMealFromRecipe() {
+        const recipeName = document.getElementById('recipe-name').value.trim();
+        if (!recipeName) {
+            document.getElementById('recipe-import-status').textContent = 'Load a recipe or enter its name before creating a meal.';
+            document.getElementById('recipe-import-status').className = 'recipe-import-status error';
+            return;
+        }
+
+        const categories = this.getCheckedValues('recipe-category');
+        const ingredients = document.getElementById('recipe-ingredients').value
+            .split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+
+        this.openMealModal();
+        document.getElementById('meal-name').value = recipeName;
+        document.getElementById('meal-difficulty').value = document.getElementById('recipe-difficulty').value;
+        document.getElementById('meal-ingredients').value = ingredients.join(', ');
+        document.getElementById('meal-food-groups').value = categories
+            .filter(category => category !== 'Dessert').join(', ');
+        document.getElementById('meal-tags').value = document.getElementById('recipe-tags').value;
+        this.setMealProtein(this.suggestRecipeProtein());
+
+        this.recipeMealCreationPending = true;
+        document.getElementById('recipe-modal').classList.remove('active');
+        document.getElementById('meal-modal').classList.add('active');
+        document.querySelector('input[name="meal-type"]').focus();
+    }
+
+    suggestRecipeProtein() {
+        const text = [
+            document.getElementById('recipe-name').value,
+            document.getElementById('recipe-ingredients').value,
+            document.getElementById('recipe-notes').value,
+            document.getElementById('recipe-tags').value
+        ].join(' ').toLowerCase();
+        const matches = [
+            [/\bchicken\b/, 'Chicken'],
+            [/\bbeef\b/, 'Beef'],
+            [/\bpork\b|bacon|ham\b/, 'Pork'],
+            [/\b(fish|salmon|tuna|cod|tilapia)\b/, 'Fish'],
+            [/\b(shrimp|prawn|crab|lobster)\b/, 'Seafood'],
+            [/\bturkey\b/, 'Turkey'],
+            [/\blamb\b/, 'Lamb']
+        ];
+        const match = matches.find(([pattern]) => pattern.test(text));
+        if (match) return match[1];
+        if (/\bvegan\b/.test(text)) return 'Vegan';
+        if (/\b(tofu|tempeh|lentils?|chickpeas?|beans?|eggs?|cheese)\b/.test(text)) return 'Vegetarian';
+        return '';
+    }
+
+    getRecipeCategoryLabel(recipe) {
+        return this.getRecipeCategories(recipe).join(', ') || 'Other';
     }
 
     async importRecipeFromUrl() {
@@ -1055,19 +1210,48 @@ class UIManager {
         status.className = 'recipe-import-status';
 
         try {
-            const response = await fetch(parsedUrl.href, { credentials: 'omit' });
-            if (!response.ok) {
-                throw new Error(`The website returned ${response.status}.`);
+            const proxyUrl = window.settingsManager.getSettings().recipeProxyUrl;
+            let html;
+            let imageBaseUrl = parsedUrl.href;
+
+            if (proxyUrl) {
+                const parsedProxyUrl = new URL(proxyUrl);
+                if (parsedProxyUrl.protocol !== 'https:' || parsedProxyUrl.username || parsedProxyUrl.password) {
+                    throw new Error('The configured recipe proxy URL must use HTTPS and cannot include credentials.');
+                }
+                const response = await fetch(parsedProxyUrl.href, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: parsedUrl.href })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || `The recipe proxy returned ${response.status}.`);
+                }
+                if (typeof result.html !== 'string') {
+                    throw new Error('The recipe proxy returned no page content.');
+                }
+                html = result.html;
+                const finalUrl = new URL(result.finalUrl || parsedUrl.href);
+                if (finalUrl.protocol !== 'https:') {
+                    throw new Error('The recipe proxy returned an invalid source URL.');
+                }
+                imageBaseUrl = finalUrl.href;
+            } else {
+                const response = await fetch(parsedUrl.href, { credentials: 'omit' });
+                if (!response.ok) {
+                    throw new Error(`The website returned ${response.status}.`);
+                }
+                html = await response.text();
             }
 
-            const html = await response.text();
             const recipeData = this.extractRecipeData(html);
             if (!recipeData) {
                 throw new Error('No supported recipe data was found on that page.');
             }
             const suggestedCategory = this.suggestRecipeCategory(recipeData);
             if (recipeData.imageUrl) {
-                const imageUrl = new URL(recipeData.imageUrl, parsedUrl.href);
+                const imageUrl = new URL(recipeData.imageUrl, imageBaseUrl);
                 recipeData.imageUrl = imageUrl.protocol === 'http:' || imageUrl.protocol === 'https:'
                     ? imageUrl.href
                     : '';
@@ -1075,7 +1259,7 @@ class UIManager {
 
             document.getElementById('recipe-source-url').value = parsedUrl.href;
             document.getElementById('recipe-name').value = recipeData.name;
-            document.getElementById('recipe-category').value = suggestedCategory;
+            this.setRecipeCategories(suggestedCategory === 'Other' ? [] : [suggestedCategory]);
             document.getElementById('recipe-prep-time').value = recipeData.prepTime ?? 0;
             document.getElementById('recipe-cook-time').value = recipeData.cookTime ?? 0;
             document.getElementById('recipe-servings').value = recipeData.servings ?? 4;
@@ -1087,10 +1271,16 @@ class UIManager {
 
             document.getElementById('recipe-import-preview').hidden = false;
             this.refreshRecipePreview();
-            status.textContent = `Recipe details loaded. Suggested category: ${suggestedCategory}. Review and edit before saving.`;
+            this.updateCreateMealButtonVisibility();
+            const suggestedProtein = this.suggestRecipeProtein();
+            status.textContent = `Recipe details loaded. Suggested category: ${suggestedCategory}.${suggestedProtein ? ` Suggested protein: ${suggestedProtein}.` : ''} Review and edit before saving.`;
             status.className = 'recipe-import-status success';
         } catch (error) {
-            status.textContent = `${error.message} This site may block browser access (CORS). You can still save the link and enter the details manually.`;
+            const hasProxy = Boolean(window.settingsManager.getSettings().recipeProxyUrl);
+            const nextStep = hasProxy
+                ? 'Check that the Worker is deployed and allows this site origin and recipe domain.'
+                : 'Some sites block direct browser access (CORS). Configure a recipe proxy in Settings, or enter the details manually.';
+            status.textContent = `${error.message} ${nextStep}`;
             status.className = 'recipe-import-status error';
         } finally {
             button.disabled = false;
@@ -1108,8 +1298,15 @@ class UIManager {
 
         const category = document.createElement('p');
         category.className = 'recipe-preview-category';
-        category.textContent = `Category: ${document.getElementById('recipe-category').value}`;
+        category.textContent = `Categories: ${this.getCheckedValues('recipe-category').join(', ') || 'Other'}`;
         preview.appendChild(category);
+
+        const suggestedProtein = this.suggestRecipeProtein();
+        if (suggestedProtein) {
+            const protein = document.createElement('p');
+            protein.textContent = `Suggested protein: ${suggestedProtein}`;
+            preview.appendChild(protein);
+        }
 
         const sourceUrl = document.getElementById('recipe-source-url').value.trim();
         if (sourceUrl) {
@@ -1293,7 +1490,7 @@ class UIManager {
         this.populateRecipeMealOptions(recipe.mealId);
 
         document.getElementById('recipe-name').value = recipe.name;
-        document.getElementById('recipe-category').value = recipe.category || 'Other';
+        this.setRecipeCategories(this.getRecipeCategories(recipe));
         document.getElementById('recipe-source-url').value = recipe.sourceUrl || '';
         document.getElementById('recipe-import-url').value = recipe.sourceUrl || '';
         document.getElementById('recipe-image-url').value = recipe.imageUrl || '';
@@ -1311,6 +1508,7 @@ class UIManager {
         document.getElementById('recipe-tags').value = recipe.tags.join(', ');
 
         document.getElementById('recipe-modal').classList.add('active');
+        this.updateCreateMealButtonVisibility();
     }
 
     deleteRecipe(recipeId) {
@@ -1326,7 +1524,7 @@ class UIManager {
 
         const recipeData = {
             name: document.getElementById('recipe-name').value,
-            category: document.getElementById('recipe-category').value,
+            categories: this.getCheckedValues('recipe-category'),
             sourceUrl: document.getElementById('recipe-source-url').value,
             imageUrl: document.getElementById('recipe-image-url').value,
             mealId: document.getElementById('recipe-meal-link').value || null,

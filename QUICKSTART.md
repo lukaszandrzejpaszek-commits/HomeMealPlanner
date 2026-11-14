@@ -54,7 +54,8 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **Regenerate day**: Generate plan > Regenerate individual meals
 - **School lunch**: Choose school lunch separately on each day in the planner
 - **Future week**: Select a later week to generate and save a separate plan
-- **Meal components**: On Meals, add proteins, starches, and vegetables in separate columns. Generated breakfasts, lunches, and dinners combine one item from each; school lunches are skipped. Saved complete meals are used when a component category is empty.
+- **Meal components**: On Meals, add proteins, starches, and vegetables in separate columns. Generated plans can combine one item from each or use saved complete meals; school lunches are skipped.
+- **Multiple meal types**: Assign a saved meal to any combination of breakfast, lunch, and dinner.
 - **Adjust rules**: Go to Rules page and toggle rules on/off or change strength
 
 ### Shopping
@@ -64,8 +65,10 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 
 ### Recipes (Bonus!)
 - **Add recipe**: Go to Recipes > + Add Recipe
-- **Import from a link**: Load recipe details and review ingredients, steps, and image before saving; the site must allow browser access (CORS)
-- **Connect to a meal**: Choose the saved meal in the recipe form
+- **Import from a link**: Load recipe details and review ingredients, steps, image, category, and protein suggestion before saving
+- **Create a meal**: Click **Create a new meal from this recipe**, select one or more meal types, and save; then save the recipe to keep the link
+- **Recipe categories**: Select any combination of Protein, Starch, Vegetables, and Dessert
+- **Blocked recipe sites**: Deploy the optional Cloudflare Worker from `worker/` and save its URL in **Settings > Recipe import proxy URL**
 - **Fill in**: Name, time, servings, ingredients, instructions
 - **Rate**: Use stars to rate your favorite recipes
 - **View**: Click "View" to see full recipe
@@ -85,7 +88,8 @@ Examples:
 ### Settings
 - Cook for X days
 - History weeks to avoid
-- School lunch days
+- Optional HTTPS recipe import proxy URL
+- Choose school lunch separately for each day in the planner
 - Dark mode toggle
 
 ### Backup & Restore

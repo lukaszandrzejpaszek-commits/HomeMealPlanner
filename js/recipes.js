@@ -10,11 +10,15 @@ class RecipeManager {
     }
 
     addRecipe(recipeData) {
+        const categories = this.normalizeCategories(
+            recipeData.categories !== undefined ? recipeData.categories : recipeData.category
+        );
         const recipe = {
             id: this.generateId(),
             mealId: recipeData.mealId || null,
             name: recipeData.name,
-            category: recipeData.category || 'Other',
+            category: categories[0] || 'Other',
+            categories,
             sourceUrl: this.normalizeSourceUrl(recipeData.sourceUrl),
             imageUrl: this.normalizeSourceUrl(recipeData.imageUrl),
             prepTime: recipeData.prepTime || 0,
@@ -46,10 +50,14 @@ class RecipeManager {
             throw new Error('Recipe not found');
         }
 
+        const categories = recipeData.categories !== undefined || recipeData.category !== undefined
+            ? this.normalizeCategories(recipeData.categories !== undefined ? recipeData.categories : recipeData.category)
+            : this.normalizeCategories(recipes[index].categories || recipes[index].category);
         recipes[index] = {
             ...recipes[index],
             name: recipeData.name || recipes[index].name,
-            category: recipeData.category || recipes[index].category || 'Other',
+            category: categories[0] || 'Other',
+            categories,
             mealId: recipeData.mealId !== undefined ? recipeData.mealId : (recipes[index].mealId || null),
             sourceUrl: recipeData.sourceUrl !== undefined
                 ? this.normalizeSourceUrl(recipeData.sourceUrl)
@@ -101,6 +109,7 @@ class RecipeManager {
         return recipes.filter(r =>
             r.name.toLowerCase().includes(q) ||
             r.instructions.toLowerCase().includes(q) ||
+            this.normalizeCategories(r.categories || r.category).some(category => category.toLowerCase().includes(q)) ||
             r.tags.some(t => t.toLowerCase().includes(q)) ||
             r.ingredients.some(ing => ing.name.toLowerCase().includes(q))
         );
@@ -142,7 +151,7 @@ class RecipeManager {
 
         let text = `RECIPE: ${recipe.name}\n`;
         text += '='.repeat(50) + '\n\n';
-        text += `Category: ${recipe.category || 'Other'}\n`;
+        text += `Categories: ${this.normalizeCategories(recipe.categories || recipe.category).join(', ') || 'Other'}\n`;
         if (recipe.sourceUrl) {
             text += `Original recipe: ${recipe.sourceUrl}\n`;
         }
@@ -181,7 +190,10 @@ class RecipeManager {
                 throw new Error('Invalid format');
             }
 
-            const validRecipes = recipes.filter(r => r.name && r.instructions);
+            const validRecipes = recipes.filter(r => r.name && r.instructions).map(recipe => {
+                const categories = this.normalizeCategories(recipe.categories || recipe.category);
+                return { ...recipe, categories, category: categories[0] || 'Other' };
+            });
             this.storage.set('recipes', validRecipes);
             return validRecipes.length;
         } catch (e) {
@@ -191,6 +203,12 @@ class RecipeManager {
     }
 
     // Parse ingredients from text format
+    normalizeCategories(input) {
+        const supportedCategories = ['Protein', 'Starch', 'Vegetables', 'Dessert'];
+        const values = this.parseList(input);
+        return supportedCategories.filter(category => values.includes(category));
+    }
+
     parseIngredients(ingredientText) {
         if (Array.isArray(ingredientText)) {
             return ingredientText.map(ing => {

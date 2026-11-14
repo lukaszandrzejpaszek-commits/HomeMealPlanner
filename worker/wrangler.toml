@@ -1,0 +1,7 @@
+name = "home-meal-planner-recipe-proxy"
+main = "recipe-proxy.js"
+compatibility_date = "2026-11-14"
+
+[vars]
+ALLOWED_ORIGINS = "https://lukaszandrzejpaszek-commits.github.io"
+ALLOWED_RECIPE_HOSTS = "mrishtanna.com"
