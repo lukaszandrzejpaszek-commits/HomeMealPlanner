@@ -1,0 +1,356 @@
+<!-- sample-meals.html - Click to load sample data into the app -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Load Sample Meals - HomeMealPlanner</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+        }
+        h1 { color: #4CAF50; }
+        p { line-height: 1.6; color: #666; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 10px 10px 0;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .success { color: green; font-weight: bold; }
+        .code {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .meals-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .meal-item {
+            background: #f9f9f9;
+            padding: 15px;
+            border-left: 4px solid #4CAF50;
+            border-radius: 4px;
+        }
+        .meal-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .meal-meta {
+            font-size: 0.9em;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍳 HomeMealPlanner - Sample Data Loader</h1>
+        
+        <p>Click the button below to load 12 sample meals into your app. This will help you test the meal planning features immediately.</p>
+
+        <button onclick="loadSampleMeals()">📥 Load Sample Meals</button>
+        <button onclick="goToApp()">🚀 Go to App</button>
+
+        <div id="status"></div>
+
+        <h2>📋 Sample Meals Included</h2>
+        <div class="meals-list">
+            <div class="meal-item">
+                <div class="meal-name">🍝 Spaghetti Carbonara</div>
+                <div class="meal-meta">Dinner • Italian • Pork</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🍜 Thai Green Curry</div>
+                <div class="meal-meta">Dinner • Asian • Chicken</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🌮 Tacos al Pastor</div>
+                <div class="meal-meta">Dinner • Mexican • Pork</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🍛 Chicken Tikka Masala</div>
+                <div class="meal-meta">Dinner • Indian • Chicken</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🐟 Grilled Salmon</div>
+                <div class="meal-meta">Dinner • Mediterranean • Fish</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🥗 Buddha Bowl</div>
+                <div class="meal-meta">Lunch • Mediterranean • Vegetarian</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🥞 Pancakes</div>
+                <div class="meal-meta">Breakfast • American • Vegetarian</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🍳 Eggs & Toast</div>
+                <div class="meal-meta">Breakfast • American • Vegetarian</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🍔 Beef Burger</div>
+                <div class="meal-meta">Lunch • American • Beef</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🍲 Vegetable Stir Fry</div>
+                <div class="meal-meta">Dinner • Asian • Vegetarian</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🥙 Falafel Wrap</div>
+                <div class="meal-meta">Lunch • Mediterranean • Vegetarian</div>
+            </div>
+            <div class="meal-item">
+                <div class="meal-name">🍜 Beef Ramen</div>
+                <div class="meal-meta">Dinner • Asian • Beef</div>
+            </div>
+        </div>
+
+        <h2>❓ How it Works</h2>
+        <p>
+            When you click "Load Sample Meals", 12 diverse meals will be added to your HomeMealPlanner. 
+            Then you can immediately test the planning features by generating a week plan. 
+            The meals cover different types (breakfast, lunch, dinner), cuisines, and proteins 
+            to showcase how the planning rules work.
+        </p>
+
+        <h2>🎯 What to Do Next</h2>
+        <ol>
+            <li>Click <strong>Load Sample Meals</strong> button above</li>
+            <li>Click <strong>Go to App</strong> button</li>
+            <li>Go to <strong>Planner</strong> page</li>
+            <li>Click <strong>Generate Week</strong> button</li>
+            <li>Watch it create an optimal meal plan!</li>
+            <li>Try clicking on meals to replace them</li>
+            <li>Go to <strong>Rules</strong> to see planning rules in action</li>
+            <li>Approve the plan to save to history</li>
+            <li>Check <strong>Shopping List</strong> for ingredients</li>
+        </ol>
+
+        <p style="margin-top: 30px; font-size: 0.9em; color: #999;">
+            <strong>Note:</strong> Sample data is stored in your browser's localStorage. 
+            It will persist until you clear your browser data. You can export it as backup anytime.
+        </p>
+    </div>
+
+    <script>
+        function loadSampleMeals() {
+            const sampleMeals = [
+                {
+                    name: "Spaghetti Carbonara",
+                    mealType: "Dinner",
+                    cuisine: "Italian",
+                    protein: "Pork",
+                    difficulty: "Easy",
+                    mealPrepFriendly: true,
+                    mealPrepDays: 2,
+                    ingredients: "Pasta, Pork Guanciale, Eggs, Pecorino Cheese, Black Pepper",
+                    foodGroups: "Pasta, Pork, Dairy",
+                    tags: "Quick, Family Favorite"
+                },
+                {
+                    name: "Thai Green Curry",
+                    mealType: "Dinner",
+                    cuisine: "Asian",
+                    protein: "Chicken",
+                    difficulty: "Medium",
+                    mealPrepFriendly: true,
+                    mealPrepDays: 3,
+                    ingredients: "Chicken, Coconut Milk, Green Curry Paste, Vegetables, Jasmine Rice",
+                    foodGroups: "Chicken, Rice, Vegetables",
+                    tags: "Spicy"
+                },
+                {
+                    name: "Tacos al Pastor",
+                    mealType: "Dinner",
+                    cuisine: "Mexican",
+                    protein: "Pork",
+                    difficulty: "Medium",
+                    mealPrepFriendly: true,
+                    mealPrepDays: 2,
+                    ingredients: "Pork, Tortillas, Pineapple, Onion, Cilantro, Lime",
+                    foodGroups: "Pork, Vegetables",
+                    tags: "Festive"
+                },
+                {
+                    name: "Chicken Tikka Masala",
+                    mealType: "Dinner",
+                    cuisine: "Indian",
+                    protein: "Chicken",
+                    difficulty: "Medium",
+                    mealPrepFriendly: true,
+                    mealPrepDays: 2,
+                    ingredients: "Chicken, Yogurt, Tomato, Cream, Spices, Rice",
+                    foodGroups: "Chicken, Rice, Dairy",
+                    tags: "Spicy, Family Favorite"
+                },
+                {
+                    name: "Grilled Salmon",
+                    mealType: "Dinner",
+                    cuisine: "Mediterranean",
+                    protein: "Fish",
+                    difficulty: "Easy",
+                    mealPrepFriendly: false,
+                    mealPrepDays: 1,
+                    ingredients: "Salmon Fillet, Lemon, Olive Oil, Herbs, Vegetables",
+                    foodGroups: "Fish, Vegetables",
+                    tags: "Healthy, Quick"
+                },
+                {
+                    name: "Buddha Bowl",
+                    mealType: "Lunch",
+                    cuisine: "Mediterranean",
+                    protein: "Vegetarian",
+                    difficulty: "Easy",
+                    mealPrepFriendly: true,
+                    mealPrepDays: 3,
+                    ingredients: "Quinoa, Chickpeas, Spinach, Tomato, Cucumber, Tahini",
+                    foodGroups: "Grains, Legumes, Vegetables",
+                    tags: "Vegetarian, Healthy"
+                },
+                {
+                    name: "Pancakes",
+                    mealType: "Breakfast",
+                    cuisine: "American",
+                    protein: "Vegetarian",
+                    difficulty: "Easy",
+                    mealPrepFriendly: false,
+                    mealPrepDays: 1,
+                    ingredients: "Flour, Eggs, Milk, Butter, Maple Syrup",
+                    foodGroups: "Dairy, Grains",
+                    tags: "Weekend, Family Favorite"
+                },
+                {
+                    name: "Eggs & Toast",
+                    mealType: "Breakfast",
+                    cuisine: "American",
+                    protein: "Vegetarian",
+                    difficulty: "Easy",
+                    mealPrepFriendly: false,
+                    mealPrepDays: 1,
+                    ingredients: "Eggs, Bread, Butter, Salt, Pepper",
+                    foodGroups: "Dairy, Grains",
+                    tags: "Quick, Weekday"
+                },
+                {
+                    name: "Beef Burger",
+                    mealType: "Lunch",
+                    cuisine: "American",
+                    protein: "Beef",
+                    difficulty: "Easy",
+                    mealPrepFriendly: false,
+                    mealPrepDays: 1,
+                    ingredients: "Beef Patty, Bun, Lettuce, Tomato, Onion, Cheese",
+                    foodGroups: "Beef, Dairy, Vegetables",
+                    tags: "Casual"
+                },
+                {
+                    name: "Vegetable Stir Fry",
+                    mealType: "Dinner",
+                    cuisine: "Asian",
+                    protein: "Vegetarian",
+                    difficulty: "Easy",
+                    mealPrepFriendly: true,
+                    mealPrepDays: 2,
+                    ingredients: "Mixed Vegetables, Soy Sauce, Garlic, Ginger, Rice, Sesame Oil",
+                    foodGroups: "Vegetables, Rice",
+                    tags: "Vegetarian, Quick"
+                },
+                {
+                    name: "Falafel Wrap",
+                    mealType: "Lunch",
+                    cuisine: "Mediterranean",
+                    protein: "Vegetarian",
+                    difficulty: "Easy",
+                    mealPrepFriendly: true,
+                    mealPrepDays: 2,
+                    ingredients: "Falafel, Pita Bread, Hummus, Lettuce, Tomato, Tahini",
+                    foodGroups: "Legumes, Vegetables",
+                    tags: "Vegetarian, Quick"
+                },
+                {
+                    name: "Beef Ramen",
+                    mealType: "Dinner",
+                    cuisine: "Asian",
+                    protein: "Beef",
+                    difficulty: "Medium",
+                    mealPrepFriendly: true,
+                    mealPrepDays: 2,
+                    ingredients: "Ramen Noodles, Beef Broth, Beef, Egg, Vegetables, Soy Sauce",
+                    foodGroups: "Beef, Noodles, Vegetables",
+                    tags: "Comfort Food"
+                }
+            ];
+
+            try {
+                // Get existing meals
+                const existing = JSON.parse(localStorage.getItem('hmp_meals') || '[]');
+                
+                // Convert sample meals to app format
+                const mealsToAdd = sampleMeals.map((meal, index) => ({
+                    id: 'meal-sample-' + index + '-' + Date.now(),
+                    name: meal.name,
+                    mealType: meal.mealType,
+                    cuisine: meal.cuisine,
+                    protein: meal.protein,
+                    foodGroups: meal.foodGroups.split(', '),
+                    mealPrepFriendly: meal.mealPrepFriendly,
+                    mealPrepDays: meal.mealPrepDays,
+                    difficulty: meal.difficulty,
+                    ingredients: meal.ingredients.split(', '),
+                    tags: meal.tags.split(', '),
+                    createdAt: new Date().toISOString(),
+                    lastUsed: null,
+                    useCount: 0
+                }));
+
+                // Add to storage
+                const allMeals = [...existing, ...mealsToAdd];
+                localStorage.setItem('hmp_meals', JSON.stringify(allMeals));
+
+                // Show success message
+                const status = document.getElementById('status');
+                status.innerHTML = `
+                    <div class="success" style="margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 4px;">
+                        ✅ Successfully loaded ${sampleMeals.length} sample meals!
+                        <br><br>
+                        Now click <strong>Go to App</strong> to start planning.
+                    </div>
+                `;
+            } catch (e) {
+                const status = document.getElementById('status');
+                status.innerHTML = `
+                    <div style="margin-top: 20px; padding: 15px; background: #ffebee; border-radius: 4px; color: #c62828;">
+                        ❌ Error loading meals: ${e.message}
+                    </div>
+                `;
+            }
+        }
+
+        function goToApp() {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
