@@ -24,11 +24,13 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 2. Select the ISO week containing the start date; its seven-day date range is shown
 3. Click **🎲 Generate Week**
 4. Watch the algorithm create an optimal plan!
+5. The repeat rule allows a breakfast twice on consecutive mornings, or a protein twice on consecutive days in different meal slots (lunch then dinner, or dinner then lunch). Neither may appear again that week. Other components cannot repeat on the same day or consecutive days, except for configured meal prep. Limited variety can leave slots empty.
 
 ### Step 3: Approve the Plan
 1. Review the generated meals
 2. Click **Approve Plan** to save to history
-3. Confirm when asked
+3. Use **History → Edit** to open an entry as a draft; approving replaces that entry. **Delete** removes an entry after confirmation. Editing an approved plan makes it a draft again.
+4. Confirm when asked
 
 ### Step 4: Check Shopping List
 1. Click **Shopping List** in the navigation
@@ -50,9 +52,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **Future week**: Select a later week to generate and save a separate plan
 - **Meal components**: Breakfast combines a Breakfast component and fruit; lunch and dinner combine protein, starch and vegetables. Assign the Breakfast category and meal type to components you want in the breakfast slot. Use the **+** buttons to fill a row manually; manual choices can override repeat rules.
 - **Multiple meal types**: Assign a component to any combination of breakfast, lunch, and dinner.
-- **Adjust rules**: Go to Rules page and toggle rules on/off or change strength
-- **Avoid consecutive meals**: When enabled above zero, the planner leaves slots empty rather than repeating an item, except for meal prep up to its configured days.
-- **Avoid same-day repeats**: When enabled above zero, an item cannot appear in two meal slots on one day.
+- **Adjust rules**: Go to Rules to toggle rules on/off or adjust the strength of scoring preferences. The repeat rule is strict and has no strength slider.
 
 ### Shopping
 - **Mark purchased**: Check off items as you shop
@@ -62,6 +62,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 ### Recipes (Bonus!)
 - **Add recipe**: Go to Recipes > + Add Recipe
 - **Find online recipes**: Open Find Recipes, choose ingredients or a cuisine keyword and search the MyPlate.food collection. Cuisine matches titles and descriptions, not official cuisine labels. Difficulty and title-based times are approximate; recipes without a time in the title are excluded by the time filter. Photos from Wikimedia Commons are illustrative, not necessarily the actual dish.
+- **Set protein pairings**: Edit a protein component and choose suitable starches and vegetables, including **No starch** or **No vegetables** when appropriate. An empty list allows any component in that category; manual choices remain unrestricted.
 - **Import from a link**: Load recipe details and review ingredients, steps, image, category, and protein suggestion before saving
 - **Link a recipe**: Choose a component under **Connect to a meal component**, or click **Create a component from this recipe**. Save the recipe to keep the link.
 - **Recipe categories**: Select any combination of Breakfast, Protein, Starch, Fruit, Vegetables, and Dessert

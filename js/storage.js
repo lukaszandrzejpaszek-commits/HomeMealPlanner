@@ -15,9 +15,9 @@ class Storage {
         const rules = this.get('rules');
         if (!rules) {
             this.set('rules', this.getDefaultRules());
-        } else if (!rules.some(rule => rule.id === 'avoid-same-meal-day')) {
-            const newRule = this.getDefaultRules().find(rule => rule.id === 'avoid-same-meal-day');
-            this.set('rules', [...rules, newRule]);
+        } else {
+            const updatedRules = this.consolidateRepeatRules(rules);
+            if (JSON.stringify(updatedRules) !== JSON.stringify(rules)) this.set('rules', updatedRules);
         }
         if (!this.get('settings')) {
             this.set('settings', this.getDefaultSettings());
@@ -39,19 +39,11 @@ class Storage {
     getDefaultRules() {
         return [
             {
-                id: 'avoid-consecutive',
-                name: 'Avoid identical meals on consecutive days',
-                description: 'Exception: Allowed if meal prep friendly with 2+ prep days',
+                id: 'component-repeat-policy',
+                name: 'Limit repeated components',
+                description: 'Breakfast can repeat on two consecutive mornings. Protein can repeat on consecutive days only between lunch and dinner. Neither can appear again that week. Other components cannot repeat on the same day or consecutive days, except for configured meal prep.',
                 enabled: true,
-                strength: 75,
-                type: 'builtin'
-            },
-            {
-                id: 'avoid-same-meal-day',
-                name: 'Avoid identical meals on the same day',
-                description: 'Do not plan the same meal for more than one meal time on a day',
-                enabled: true,
-                strength: 75,
+                strength: 100,
                 type: 'builtin'
             },
             {
@@ -120,6 +112,16 @@ class Storage {
             planningStartDay: 'Monday',
             darkMode: false
         };
+    }
+
+    consolidateRepeatRules(rules) {
+        const defaultRule = this.getDefaultRules().find(rule => rule.id === 'component-repeat-policy');
+        const oldIds = ['avoid-consecutive', 'avoid-same-meal-day', 'avoid-component-week'];
+        const updatedRules = rules.filter(rule => !oldIds.includes(rule.id));
+        const existing = updatedRules.find(rule => rule.id === defaultRule.id);
+        if (!existing) return [defaultRule, ...updatedRules];
+        return updatedRules.map(rule => rule.id === defaultRule.id && rule.type === 'builtin'
+            ? { ...rule, name: defaultRule.name, description: defaultRule.description, strength: 100 } : rule);
     }
 
     set(key, value) {
@@ -191,6 +193,21 @@ class Storage {
         return history[key] || null;
     }
 
+    replaceHistoryEntry(key, plan, statistics) {
+        const history = this.get('history', {});
+        if (!Object.prototype.hasOwnProperty.call(history, key)) {
+            throw new Error('The history entry no longer exists. Your draft was not approved.');
+        }
+        history[key] = {
+            ...history[key],
+            plan,
+            statistics,
+            approvedDate: new Date().toISOString(),
+            status: 'approved'
+        };
+        this.set('history', history);
+    }
+
     getAllHistory() {
         return this.get('history', {});
     }
@@ -216,7 +233,7 @@ class Storage {
         try {
             const data = JSON.parse(jsonString);
             this.set('meals', data.meals || []);
-            this.set('rules', data.rules || this.getDefaultRules());
+            this.set('rules', this.consolidateRepeatRules(data.rules || this.getDefaultRules()));
             this.set('settings', data.settings || this.getDefaultSettings());
             this.set('current-week', data.currentWeek || null);
             this.set('weekly-plans', data.weeklyPlans || {});

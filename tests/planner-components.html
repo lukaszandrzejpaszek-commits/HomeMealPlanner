@@ -13,10 +13,7 @@
         }],
         recipes: [],
         'meal-components': { proteins: [], starches: ['Rice'], vegetables: [] },
-        rules: [
-            { id: 'avoid-consecutive', enabled: true, strength: 75 },
-            { id: 'avoid-same-meal-day', enabled: true, strength: 75 }
-        ]
+        rules: []
     };
     window.storage = {
         get(key, fallback) { return data[key] === undefined ? fallback : structuredClone(data[key]); },
@@ -44,6 +41,163 @@
         assert(window.repository.getPlanningMealsByType('Breakfast').length === 0,
             'Saved meal types must be respected');
 
+        const pairingData = { meals: [], recipes: [],
+            'meal-components': { proteins: ['Tofu'], starches: [], vegetables: [] } };
+        const pairingStorage = {
+            get(key, fallback) { return pairingData[key] === undefined ? fallback : structuredClone(pairingData[key]); },
+            set(key, value) { pairingData[key] = structuredClone(value); }
+        };
+        const pairingRepo = new window.repository.constructor(pairingStorage);
+        const ruleStub = { getRules: () => [], scoreMealPlacement: () => 1 };
+        const pairingPlanner = new window.planner.constructor(pairingStorage, pairingRepo, ruleStub);
+        const rice = pairingRepo.addMeal({ name: 'Rice', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'] });
+        const pasta = pairingRepo.addMeal({ name: 'Pasta', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'] });
+        const bread = pairingRepo.addMeal({ name: 'Bread', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'] });
+        const broccoli = pairingRepo.addMeal({ name: 'Broccoli', mealTypes: ['Lunch', 'Dinner'], categories: ['Vegetables'] });
+        const carrot = pairingRepo.addMeal({ name: 'Carrot', mealTypes: ['Dinner'], categories: ['Vegetables'] });
+        const chicken = pairingRepo.addMeal({
+            name: 'Chicken', mealTypes: ['Lunch', 'Dinner'], categories: ['Protein'],
+            pairings: { starches: [rice.id, pasta.id], vegetables: [broccoli.id, carrot.id] }
+        });
+        const tofuId = pairingRepo.getSimpleComponentId('proteins', 'Tofu');
+        let pairingMeals = pairingRepo.getPlanningMealsByType('Lunch');
+        assert(pairingMeals.filter(item => item.componentItems.protein.id === chicken.id).length === 2 &&
+            pairingMeals.filter(item => item.componentItems.protein.id === tofuId).length === 3,
+            'Configured proteins must match both lists, while unconfigured proteins remain unrestricted');
+        pairingMeals = pairingRepo.getPlanningMealsByType('Dinner');
+        assert(pairingMeals.filter(item => item.componentItems.protein.id === chicken.id).length === 4 &&
+            pairingMeals.filter(item => item.componentItems.protein.id === chicken.id)
+                .every(item => [rice.id, pasta.id].includes(item.componentItems.starch.id)),
+            'Starch and vegetable choices must combine independently and respect meal types');
+        pairingRepo.updateMeal(chicken.id, {
+            ...chicken, pairings: { starches: [], vegetables: [broccoli.id] }
+        });
+        pairingMeals = pairingRepo.getPlanningMealsByType('Dinner')
+            .filter(item => item.componentItems.protein.id === chicken.id);
+        assert(pairingMeals.length === 3 && pairingMeals.every(item => item.componentItems.vegetable.id === broccoli.id),
+            'An empty starch list must allow every starch while retaining vegetable restrictions');
+        pairingRepo.updateMeal(chicken.id, {
+            ...chicken, pairings: { starches: [rice.id], vegetables: [] }
+        });
+        pairingMeals = pairingRepo.getPlanningMealsByType('Dinner')
+            .filter(item => item.componentItems.protein.id === chicken.id);
+        assert(pairingMeals.length === 2 && pairingMeals.every(item => item.componentItems.starch.id === rice.id),
+            'An empty vegetable list must allow every vegetable while retaining starch restrictions');
+        pairingRepo.updateMeal(chicken.id, {
+            ...chicken, pairings: { starches: [], vegetables: [] }
+        });
+        assert(pairingRepo.getComponent(chicken.id).pairings === null &&
+            pairingRepo.getPlanningMealsByType('Dinner').filter(item => item.componentItems.protein.id === chicken.id).length === 6,
+            'Two empty lists must allow every combination');
+        pairingRepo.updateMeal(chicken.id, {
+            ...chicken, pairings: { starches: ['@none', rice.id], vegetables: ['@none', broccoli.id] }
+        });
+        pairingMeals = pairingRepo.getPlanningMealsByType('Lunch')
+            .filter(item => item.componentItems.protein.id === chicken.id);
+        assert(pairingMeals.length === 4 &&
+            pairingMeals.some(item => item.componentItems.starch && item.componentItems.vegetable) &&
+            pairingMeals.some(item => item.omittedComponents.includes('starch') && item.componentItems.vegetable) &&
+            pairingMeals.some(item => item.componentItems.starch && item.omittedComponents.includes('vegetable')) &&
+            pairingMeals.some(item => item.omittedComponents.length === 2),
+            'No starch and no vegetables must be independent choices alongside selected components');
+        pairingRepo.updateMeal(chicken.id, chicken);
+        const generatedPairings = pairingPlanner.generateWeekPlan();
+        assert(Object.values(generatedPairings).every(day => ['lunch', 'dinner'].every(type =>
+            day[type] && (day[type].componentItems.protein.id !== chicken.id ||
+                ([rice.id, pasta.id].includes(day[type].componentItems.starch.id) &&
+                    [broccoli.id, carrot.id].includes(day[type].componentItems.vegetable.id))))),
+            'Generated meals must respect configured pairings');
+        const regeneratedPairings = pairingPlanner.regenerateMealType('dinner');
+        assert(Object.values(regeneratedPairings).every(day => day.dinner &&
+            (day.dinner.componentItems.protein.id !== chicken.id || [rice.id, pasta.id].includes(day.dinner.componentItems.starch.id))),
+            'Regenerated meals must respect configured pairings');
+        pairingRepo.updateMeal(chicken.id, { ...chicken, name: 'Chicken updated', pairings: undefined });
+        assert(pairingRepo.getComponent(chicken.id).pairings.starches[0] === rice.id &&
+            JSON.parse(pairingRepo.exportMeals()).find(item => item.id === chicken.id).pairings.vegetables.length === 2,
+            'Editing and exporting components must preserve pairings');
+        pairingRepo.deleteMeal(rice.id);
+        assert(pairingRepo.getPlanningMealsByType('Lunch').some(item =>
+            item.componentItems.protein.id === chicken.id && item.componentItems.starch.id === pasta.id),
+            'Other allowed components must remain usable after a component is deleted');
+        pairingRepo.deleteMeal(pasta.id);
+        assert(!pairingRepo.getPlanningMealsByType('Lunch').some(item => item.componentItems.protein.id === chicken.id),
+            'A deleted allowed component must not silently permit other combinations');
+        pairingPlanner.setMealComponent(0, 'lunch', 'protein', chicken.id);
+        const manualPairing = pairingPlanner.setMealComponent(0, 'lunch', 'starch', bread.id);
+        assert(manualPairing.componentItems.starch.id === bread.id,
+            'Manual selections may override pairing restrictions');
+        pairingRepo.updateSimpleMealComponent(tofuId, {
+            name: 'Tofu', mealTypes: ['Lunch'], categories: ['Protein', 'Vegetables'],
+            pairings: { starches: [bread.id], vegetables: ['@self'] }
+        });
+        assert(pairingRepo.getComponent(tofuId).pairings.vegetables[0] === tofuId &&
+            pairingRepo.getPlanningMealsByType('Lunch').some(item =>
+                item.componentItems.protein.id === tofuId && item.componentItems.vegetable.id === tofuId),
+            'Edited simple components must retain their identities and may pair with themselves');
+        let invalidPairingsRejected = false;
+        try {
+            pairingRepo.updateMeal(chicken.id, {
+                ...pairingRepo.getComponent(chicken.id),
+                pairings: { starches: null, vegetables: [broccoli.id] }
+            });
+        } catch (error) {
+            invalidPairingsRejected = true;
+        }
+        assert(invalidPairingsRejected && pairingRepo.getComponent(chicken.id).pairings.starches.length === 2,
+            'Invalid pairing updates must be rejected without changing saved restrictions');
+        pairingRepo.updateMeal(chicken.id, {
+            ...pairingRepo.getComponent(chicken.id), pairings: { starches: [], vegetables: [] }
+        });
+        assert(pairingRepo.getPlanningMealsByType('Lunch').some(item =>
+            item.componentItems.protein.id === chicken.id && item.componentItems.starch.id === bread.id),
+            'Clearing restrictions must allow all available combinations again');
+
+        const noSidesData = { meals: [], recipes: [],
+            'meal-components': { proteins: [], starches: [], vegetables: [] } };
+        const noSidesStorage = {
+            get(key, fallback) { return noSidesData[key] === undefined ? fallback : structuredClone(noSidesData[key]); },
+            set(key, value) { noSidesData[key] = structuredClone(value); }
+        };
+        const noSidesRepo = new window.repository.constructor(noSidesStorage);
+        const noSidesPlanner = new window.planner.constructor(noSidesStorage, noSidesRepo, ruleStub);
+        const fish = noSidesRepo.addMeal({
+            name: 'Fish', mealTypes: ['Lunch', 'Dinner'], categories: ['Protein'], ingredients: ['Fish'],
+            mealPrepFriendly: true, mealPrepDays: 2,
+            pairings: { starches: ['@none'], vegetables: ['@none'] }
+        });
+        noSidesRepo.updateMeal(fish.id, {
+            ...fish, pairings: { starches: ['@none'], vegetables: [] }
+        });
+        assert(noSidesRepo.getPlanningMealsByType('Lunch').length === 0,
+            'An empty vegetable list must not allow omission without selecting no vegetables');
+        noSidesRepo.updateMeal(fish.id, {
+            ...fish, pairings: { starches: [], vegetables: ['@none'] }
+        });
+        assert(noSidesRepo.getPlanningMealsByType('Lunch').length === 0,
+            'An empty starch list must not allow omission without selecting no starch');
+        noSidesRepo.updateMeal(fish.id, fish);
+        const noSidesMeal = noSidesRepo.getPlanningMealsByType('Lunch')[0];
+        assert(noSidesMeal && noSidesMeal.componentItems.protein.id === fish.id &&
+            noSidesMeal.omittedComponents.join(',') === 'starch,vegetable' &&
+            noSidesMeal.mealPrepFriendly && noSidesMeal.ingredients.join(',') === 'Fish',
+            'A protein can form a complete meal without either category, including for meal prep');
+        assert(JSON.parse(noSidesRepo.exportMeals())[0].pairings.starches.includes('@none'),
+            'Omission choices must survive component export');
+        const noSidesPlan = noSidesPlanner.generateWeekPlan();
+        assert(noSidesPlan[noSidesPlanner.days[0]].lunch.omittedComponents.length === 2 &&
+            noSidesPlanner.regenerateDay(0)[noSidesPlanner.days[0]].dinner.omittedComponents.length === 2,
+            'Generation and day regeneration must work without any starch or vegetable components');
+        const noSidesShopping = new window.shoppingManager.constructor(noSidesStorage, noSidesRepo);
+        assert(noSidesShopping.generateShoppingList().every(item => item.name === 'Fish'),
+            'Omitted sides must not appear on the shopping list');
+        const side = noSidesRepo.addMeal({ name: 'Rice', mealTypes: ['Lunch'], categories: ['Starch'] });
+        const withSide = noSidesPlanner.setMealComponent(0, 'lunch', 'starch', side.id);
+        assert(withSide.componentItems.starch.id === side.id &&
+            !withSide.omittedComponents.includes('starch') && withSide.omittedComponents.includes('vegetable'),
+            'Manually adding a side must clear its omission while preserving other omissions');
+        assert(noSidesRepo.getPlanningMealsByType('Lunch').every(item => !item.componentItems.starch),
+            'Selecting only no starch must not generate a starch even when one exists');
+
         const sharedRice = {
             id: 'other', componentItems: {
                 protein: { id: 'chicken' },
@@ -69,12 +223,127 @@
         assert(window.ruleEngine.ruleAvoidConsecutive(prepMeal, comparison, 1, 'lunch') === 0,
             'A meal-prep item must not exceed its consecutive-day limit');
 
+        const weekly = { id: 'component-repeat-policy', enabled: true, strength: 100 };
+        data.rules.push(weekly);
+        const weekComparison = window.planner.initializeEmptyPlan();
+        weekComparison.Monday.breakfast = sharedRice;
+        assert(window.ruleEngine.ruleAvoidComponentWeek(meal, weekComparison, 2, 'lunch') === 100,
+            'The weekly rule must not restrict shared starch or vegetables');
+        const breakfastMeal = { componentItems: {
+            breakfast: { id: 'pancakes' }, fruit: { id: 'apple' }
+        } };
+        weekComparison.Monday.breakfast = { componentItems: {
+            breakfast: { id: 'toast' }, fruit: { id: 'apple' }
+        } };
+        assert(window.ruleEngine.ruleAvoidComponentWeek(breakfastMeal, weekComparison, 2, 'breakfast') === 100,
+            'The weekly rule must not restrict shared fruit');
+        weekComparison.Monday.breakfast = breakfastMeal;
+        assert(window.ruleEngine.applyRule(weekly, breakfastMeal, weekComparison, 2, 'breakfast') === 0,
+            'A breakfast component must not repeat after a gap');
+        const secondBreakfast = { componentItems: {
+            breakfast: { id: 'pancakes' }, fruit: { id: 'pear' }
+        } };
+        assert(window.planner.selectBestMeal([secondBreakfast], weekComparison, 1, 'breakfast'),
+            'A non-meal-prep breakfast can repeat the next morning despite the consecutive rule');
+        assert(!window.planner.selectBestMeal([breakfastMeal], weekComparison, 1, 'breakfast'),
+            'The same fruit still cannot repeat on consecutive days');
+        weekComparison.Tuesday.breakfast = secondBreakfast;
+        assert(window.ruleEngine.applyRule(weekly, breakfastMeal, weekComparison, 2, 'breakfast') === 0,
+            'Breakfast must not appear on a third day');
+        weekComparison.Tuesday.breakfast = null;
+        weekComparison.Monday.breakfast = null;
+        const sharedProtein = { componentItems: {
+            protein: meal.componentItems.protein, starch: { id: 'other-starch' }
+        } };
+        weekComparison.Monday.dinner = sharedProtein;
+        assert(window.ruleEngine.applyRule(weekly, meal, weekComparison, 2, 'lunch') === 0 &&
+            !window.planner.selectBestMeal([meal], weekComparison, 2, 'lunch'),
+            'A protein used earlier in the week must be blocked even on nonconsecutive days');
+        assert(window.planner.selectBestMeal([meal], weekComparison, 1, 'lunch') &&
+            window.ruleEngine.applyRule(weekly, meal, weekComparison, 1, 'dinner') === 0 &&
+            window.ruleEngine.applyRule(weekly, meal, weekComparison, 0, 'lunch') === 0,
+            'A protein may repeat at lunch after dinner, but not at dinner again or on the same day');
+        weekComparison.Monday.dinner = null;
+        weekComparison.Monday.lunch = sharedProtein;
+        assert(window.planner.selectBestMeal([meal], weekComparison, 1, 'dinner') &&
+            window.ruleEngine.applyRule(weekly, meal, weekComparison, 1, 'lunch') === 0,
+            'A protein may repeat at dinner after lunch, but not at lunch again');
+        weekComparison.Tuesday.dinner = sharedProtein;
+        assert(window.ruleEngine.applyRule(weekly, meal, weekComparison, 2, 'lunch') === 0 &&
+            window.ruleEngine.applyRule(weekly, meal, weekComparison, 6, 'dinner') === 0,
+            'A protein cannot be used a third time, even on a consecutive day');
+        weekComparison.Monday.lunch = null;
+        weekComparison.Tuesday.dinner = null;
+        weekComparison.Wednesday.dinner = sharedProtein;
+        assert(window.planner.selectBestMeal([meal], weekComparison, 1, 'lunch') &&
+            !window.planner.selectBestMeal([meal], weekComparison, 1, 'dinner'),
+            'Regenerating an earlier day must check the following day and opposite meal slot');
+        weekComparison.Wednesday.dinner = null;
+        weekComparison.Monday.dinner = sharedProtein;
+        weekComparison.Monday.lunch = meal;
+        assert(window.ruleEngine.applyRule(weekly, meal, weekComparison, 0, 'lunch') === 0,
+            'Another meal on the same day remains a conflict while replacing the target slot');
+        weekComparison.Monday.dinner = null;
+        assert(window.ruleEngine.applyRule(weekly, meal, weekComparison, 0, 'lunch') === 100,
+            'The target slot must not conflict with itself');
+        weekComparison.Monday.lunch = null;
+        weekComparison.Monday.breakfast = { components: { protein: 'Tofu' } };
+        const legacyProtein = { components: { protein: 'Tofu', starch: 'Rice' } };
+        assert(window.ruleEngine.applyRule(weekly, legacyProtein, weekComparison, 4, 'lunch') === 0,
+            'Weekly repetition must recognize legacy component plans');
+        weekComparison.Monday.breakfast = null;
+        weekComparison.Monday.dinner = sharedProtein;
+        const rotatedDays = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const rotatedWeek = window.planner.initializeEmptyPlan();
+        rotatedWeek.Saturday.dinner = sharedProtein;
+        window.ruleEngine.days = rotatedDays;
+        assert(window.ruleEngine.applyRule(weekly, meal, rotatedWeek, 2, 'lunch') === 0,
+            'Weekly repetition must follow the configured start day across Sunday and Monday');
+        window.ruleEngine.days = [...window.planner.days];
+        weekly.enabled = false;
+        assert(window.planner.selectBestMeal([meal], weekComparison, 1, 'dinner') &&
+            window.planner.selectBestMeal([meal], weekComparison, 4, 'lunch'),
+            'Disabling the combined rule must permit consecutive and nonconsecutive repeats');
+        weekly.enabled = true;
+        const futurePlan = window.planner.initializeEmptyPlan();
+        futurePlan.Friday.dinner = meal;
+        window.planner.saveCurrentWeek(window.planner.createWeekRecord(futurePlan));
+        const regeneratedDay = window.planner.regenerateDay(0);
+        assert(!regeneratedDay.Monday.lunch && !regeneratedDay.Monday.dinner,
+            'Regenerating an earlier day must not repeat a component already used later in the week');
+        const regeneratedType = window.planner.regenerateMealType('lunch');
+        assert(!regeneratedType.Monday.lunch && regeneratedType.Friday.dinner,
+            'Regenerating a meal type must respect unchanged meals elsewhere in the week');
+        const restrictedWeek = window.planner.generateWeekPlan();
+        assert(restrictedWeek.Monday.lunch && !restrictedWeek.Wednesday.lunch,
+            'Week generation must leave later slots empty rather than repeat a component');
+
+        const simpleData = { rules: [weekly] };
+        const simpleStorage = {
+            get(key, fallback) { return simpleData[key] === undefined ? fallback : structuredClone(simpleData[key]); },
+            set(key, value) { simpleData[key] = structuredClone(value); }
+        };
+        const simpleMeals = {
+            Breakfast: [breakfastMeal, secondBreakfast],
+            Lunch: [{ componentItems: { protein: { id: 'tofu' } } }],
+            Dinner: [{ componentItems: { protein: { id: 'tofu' } } }]
+        };
+        const simpleRepository = { getPlanningMealsByType(type) { return simpleMeals[type]; } };
+        const simpleEngine = new window.ruleEngine.constructor(simpleStorage, simpleRepository);
+        const simplePlanner = new window.planner.constructor(simpleStorage, simpleRepository, simpleEngine);
+        const simplePlan = simplePlanner.generateWeekPlan();
+        assert(simplePlan.Monday.breakfast && simplePlan.Tuesday.breakfast && !simplePlan.Wednesday.breakfast &&
+            simplePlan.Monday.lunch && simplePlan.Tuesday.dinner &&
+            !simplePlan.Tuesday.lunch && !simplePlan.Wednesday.lunch && !simplePlan.Wednesday.dinner,
+            'Generation must allow exactly two consecutive breakfasts and a lunch-to-dinner protein pair');
+        data.rules.pop();
+
         const plan = window.planner.generateWeekPlan();
-        assert(plan.Monday.lunch && !plan.Monday.dinner && !plan.Tuesday.lunch && plan.Wednesday.lunch,
-            'Shared items must not repeat on the same or consecutive days');
+        assert(plan.Monday.lunch && plan.Monday.dinner && plan.Tuesday.lunch,
+            'Generation without the repeat rule must allow repeats');
         const regenerated = window.planner.regenerateMealType('lunch');
-        assert(regenerated.Monday.lunch && !regenerated.Tuesday.lunch,
-            'Regeneration must respect item repetition rules');
+        assert(regenerated.Monday.lunch && regenerated.Tuesday.lunch,
+            'Regeneration without the repeat rule must allow repeats');
 
         data.meals[0].categories = ['Protein'];
         assert(window.repository.getPlanningMealsByType('Lunch').length === 0,

@@ -22,6 +22,7 @@ class Repository {
             imageCredit: mealData.imageCredit || null,
             cuisine: mealData.cuisine || 'Other',
             protein: mealData.protein || '',
+            pairings: this.normalizePairings(mealData.pairings, id),
             foodGroups: this.parseList(mealData.foodGroups),
             mealPrepFriendly: mealData.mealPrepFriendly || false,
             mealPrepDays: mealData.mealPrepDays || 0,
@@ -62,6 +63,8 @@ class Repository {
                     ? null : (meals[index].imageCredit || null),
             cuisine: mealData.cuisine || 'Other',
             protein: mealData.protein || '',
+            pairings: mealData.pairings === undefined ? (meals[index].pairings ?? null)
+                : this.normalizePairings(mealData.pairings, id),
             foodGroups: this.parseList(mealData.foodGroups),
             mealPrepFriendly: mealData.mealPrepFriendly || false,
             mealPrepDays: mealData.mealPrepDays || 0,
@@ -214,6 +217,19 @@ class Repository {
         ];
     }
 
+    normalizePairings(pairings, id) {
+        if (pairings == null) return null;
+        if (!Array.isArray(pairings.starches) || !Array.isArray(pairings.vegetables) ||
+            [...pairings.starches, ...pairings.vegetables].some(value => typeof value !== 'string' || !value.trim())) {
+            throw new Error('Invalid protein pairing selections.');
+        }
+        if (!pairings.starches.length && !pairings.vegetables.length) return null;
+        return {
+            starches: [...new Set(pairings.starches.map(value => value === '@self' ? id : value))],
+            vegetables: [...new Set(pairings.vegetables.map(value => value === '@self' ? id : value))]
+        };
+    }
+
     getComponentsByCategory(type, category) {
         return [...this.getSimpleMealComponents(), ...this.getMealsByType(type)]
             .filter(item => this.getMealCategories(item).includes(category));
@@ -234,7 +250,7 @@ class Repository {
             protein: protein?.protein || protein?.name || 'N/A',
             foodGroups: uniqueItems.flatMap(item => (item.foodGroups || [])
                 .filter(group => !['breakfast', 'protein', 'starch', 'fruit', 'vegetables'].includes(group.toLowerCase()))),
-            mealPrepFriendly: slots.every(slot => componentItems[slot.key]) &&
+            mealPrepFriendly: slots.every(slot => componentItems[slot.key] || componentItems[slot.key] === null) &&
                 uniqueItems.every(item => item.mealPrepFriendly && item.mealPrepDays >= 2),
             mealPrepDays: Math.min(...uniqueItems.map(item => item.mealPrepDays || 0)),
             difficulty: uniqueItems.some(item => item.difficulty === 'Hard') ? 'Hard'
@@ -244,17 +260,38 @@ class Repository {
             components: Object.fromEntries(slots.filter(slot => componentItems[slot.key])
                 .map(slot => [slot.key, componentItems[slot.key].name])),
             componentItems: Object.fromEntries(slots.filter(slot => componentItems[slot.key])
-                .map(slot => [slot.key, componentItems[slot.key]]))
+                .map(slot => [slot.key, componentItems[slot.key]])),
+            omittedComponents: slots.filter(slot => componentItems[slot.key] === null).map(slot => slot.key)
         };
     }
 
     getPlanningMealsByType(type) {
         const slots = this.getMealSlots(type);
         const groups = slots.map(slot => this.getComponentsByCategory(type, slot.category));
+        if (type.toLowerCase() !== 'breakfast') {
+            groups[0] = groups[0].filter(protein => {
+                if (protein.pairings == null) return true;
+                const valid = Array.isArray(protein.pairings.starches) &&
+                    Array.isArray(protein.pairings.vegetables) &&
+                    [...protein.pairings.starches, ...protein.pairings.vegetables]
+                        .every(value => typeof value === 'string' && value.trim());
+                if (!valid) console.error(`Invalid pairings for protein component: ${protein.name}`);
+                return valid;
+            });
+            groups[1].push(null);
+            groups[2].push(null);
+        }
         if (groups.some(group => !group.length)) return [];
-
         const combinations = groups.reduce((partial, group, index) =>
-            partial.flatMap(items => group.map(item => ({ ...items, [slots[index].key]: item }))), [{}]);
+            partial.flatMap(items => group
+                .filter(item => {
+                    if (slots[index].key !== 'starch' && slots[index].key !== 'vegetable') return true;
+                    const allowed = items.protein?.pairings?.[slots[index].key === 'starch' ? 'starches' : 'vegetables'];
+                    if (!item) return Boolean(allowed?.includes('@none'));
+                    if (!allowed) return true;
+                    return !allowed.length || allowed.includes(item.id);
+                })
+                .map(item => ({ ...items, [slots[index].key]: item }))), [{}]);
         return combinations.map(items => this.createComponentMeal(type, items));
     }
 

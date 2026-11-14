@@ -63,6 +63,8 @@ class HistoryManager {
             createdAt: new Date().toISOString(),
             lastModified: new Date().toISOString()
         };
+        delete currentWeek.editingHistoryKey;
+        delete currentWeek.approvedDate;
 
         this.storage.set('current-week', currentWeek);
         if (currentWeek.weekKey) {
@@ -71,6 +73,29 @@ class HistoryManager {
             this.storage.set('weekly-plans', weeklyPlans);
         }
         return true;
+    }
+
+    deleteHistoryEntry(key) {
+        const history = this.getAllHistory();
+        if (!Object.prototype.hasOwnProperty.call(history, key)) {
+            throw new Error('History entry not found.');
+        }
+        delete history[key];
+        this.storage.set('history', history);
+        const weeks = this.storage.get('weekly-plans', {});
+        let changed = false;
+        Object.values(weeks).forEach(week => {
+            if (week.editingHistoryKey === key) {
+                delete week.editingHistoryKey;
+                changed = true;
+            }
+        });
+        if (changed) this.storage.set('weekly-plans', weeks);
+        const currentWeek = this.storage.get('current-week');
+        if (currentWeek?.editingHistoryKey === key) {
+            delete currentWeek.editingHistoryKey;
+            this.storage.set('current-week', currentWeek);
+        }
     }
 
     getHistoryStatistics() {

@@ -18,7 +18,7 @@ class Planner {
             }
             this.setSelectedWeekStart(weekStart);
             this.saveCurrentWeek(currentWeek);
-            if (this.days[0] !== startDay) this.setPlanningStartDay(startDay);
+            if (this.days[0] !== startDay && !currentWeek.historyWeekSelection) this.setPlanningStartDay(startDay);
         } else {
             this.setSelectedWeekStart(this.getWeekStart(new Date(), startDay));
             const weekInfo = this.getCurrentWeekInfo();
@@ -80,6 +80,8 @@ class Planner {
         const previousWeek = this.getCurrentWeek();
         this.saveCurrentWeek({
             ...this.createWeekRecord(plan),
+            ...(previousWeek?.editingHistoryKey ? { editingHistoryKey: previousWeek.editingHistoryKey } : {}),
+            ...(previousWeek?.historyWeekSelection ? { historyWeekSelection: true } : {}),
             createdAt: previousWeek?.createdAt || new Date().toISOString(),
             lastModified: new Date().toISOString()
         });
@@ -113,7 +115,7 @@ class Planner {
         }
 
         currentWeek.plan = plan;
-        currentWeek.lastModified = new Date().toISOString();
+        this.markWeekDraft(currentWeek);
         this.saveCurrentWeek(currentWeek);
 
         return plan;
@@ -140,7 +142,7 @@ class Planner {
         }
 
         currentWeek.plan = plan;
-        currentWeek.lastModified = new Date().toISOString();
+        this.markWeekDraft(currentWeek);
         this.saveCurrentWeek(currentWeek);
 
         return plan;
@@ -150,7 +152,7 @@ class Planner {
         let bestMeal = null;
         let bestScore = -Infinity;
         const requiredRules = this.ruleEngine.getRules().filter(rule =>
-            ['avoid-consecutive', 'avoid-same-meal-day'].includes(rule.id) && rule.enabled && rule.strength > 0
+            rule.id === 'component-repeat-policy' && rule.enabled
         );
 
         for (const meal of availableMeals) {
@@ -183,7 +185,7 @@ class Planner {
 
         if (meal) {
             plan[day][mealType] = { ...meal };
-            currentWeek.lastModified = new Date().toISOString();
+            this.markWeekDraft(currentWeek);
             this.saveCurrentWeek(currentWeek);
             return plan[day][mealType];
         }
@@ -206,9 +208,12 @@ class Planner {
             throw new Error('Turn off school lunch before adding components.');
         }
         const previousMeal = currentWeek.plan[day][mealType];
-        const items = { ...(previousMeal?.componentItems || {}), [slotKey]: component };
+        const omitted = Object.fromEntries((previousMeal?.omittedComponents || [])
+            .filter(key => this.repository.getMealSlots(type).some(slot => slot.key === key))
+            .map(key => [key, null]));
+        const items = { ...omitted, ...(previousMeal?.componentItems || {}), [slotKey]: component };
         currentWeek.plan[day][mealType] = this.repository.createComponentMeal(type, items);
-        currentWeek.lastModified = new Date().toISOString();
+        this.markWeekDraft(currentWeek);
         this.saveCurrentWeek(currentWeek);
         return currentWeek.plan[day][mealType];
     }
@@ -232,7 +237,7 @@ class Planner {
         if (enabled) {
             currentWeek.plan[day].lunch = null;
         }
-        currentWeek.lastModified = new Date().toISOString();
+        this.markWeekDraft(currentWeek);
         this.saveCurrentWeek(currentWeek);
         return currentWeek.plan;
     }
@@ -351,6 +356,51 @@ class Planner {
         };
     }
 
+    markWeekDraft(week) {
+        week.status = 'Draft';
+        delete week.approvedDate;
+        week.lastModified = new Date().toISOString();
+    }
+
+    editHistoryEntry(key) {
+        const history = this.storage.get('history', {});
+        const entry = history[key];
+        if (!entry || !entry.plan || typeof entry.plan !== 'object') {
+            throw new Error('History entry not found or has no plan.');
+        }
+        let start;
+        if (entry.weekStartDate) {
+            start = new Date(`${entry.weekStartDate}T00:00:00Z`);
+            if (Number.isNaN(start.getTime()) || start.toISOString().slice(0, 10) !== entry.weekStartDate) {
+                throw new Error('The history entry has an invalid start date.');
+            }
+        } else {
+            if (!Number.isInteger(entry.year) || !Number.isInteger(entry.weekNumber) ||
+                entry.weekNumber < 1 || entry.weekNumber > 53) {
+                throw new Error('The history entry has an invalid week.');
+            }
+            start = new Date(Date.UTC(entry.year, 0, 4));
+            start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7) + (entry.weekNumber - 1) * 7);
+            const info = this.getWeekInfo(start);
+            if (info.year !== entry.year || info.weekNumber !== entry.weekNumber) {
+                throw new Error('The history entry has an invalid week.');
+            }
+        }
+
+        const currentWeek = this.getCurrentWeek();
+        if (currentWeek) this.saveCurrentWeek(currentWeek);
+        this.setSelectedWeekStart(start);
+        const savedWeek = this.storage.get('weekly-plans', {})[this.getCurrentWeekInfo().weekKey];
+        const draft = savedWeek?.editingHistoryKey === key ? savedWeek : {
+            ...this.createWeekRecord({ ...this.initializeEmptyPlan(), ...JSON.parse(JSON.stringify(entry.plan)) }),
+            editingHistoryKey: key
+        };
+        draft.historyWeekSelection = true;
+        this.markWeekDraft(draft);
+        this.saveCurrentWeek(draft);
+        return draft;
+    }
+
     saveCurrentWeek(week) {
         const record = { ...week, ...this.getCurrentWeekInfo() };
         this.storage.set('current-week', record);
@@ -370,14 +420,18 @@ class Planner {
         const now = new Date();
         const info = this.getCurrentWeekInfo();
 
-        // Record meal usage
-        this.recordPlanMealUsage(currentWeek.plan);
-
         // Calculate statistics
         const statistics = this.calculatePlanStatistics(currentWeek.plan);
 
         // Save to history
-        this.storage.saveToHistory(info.weekNumber, info.year, currentWeek.plan, statistics, info);
+        if (currentWeek.editingHistoryKey) {
+            this.storage.replaceHistoryEntry(currentWeek.editingHistoryKey, currentWeek.plan, statistics);
+            delete currentWeek.editingHistoryKey;
+        } else {
+            this.storage.saveToHistory(info.weekNumber, info.year, currentWeek.plan, statistics, info);
+        }
+
+        this.recordPlanMealUsage(currentWeek.plan);
 
         // Update current week status
         currentWeek.status = 'Approved';

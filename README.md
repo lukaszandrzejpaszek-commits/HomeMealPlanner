@@ -11,7 +11,7 @@ A lightweight, single-page web application for family meal planning with intelli
 - **Meal Components** - Store reusable protein, starch, fruit, and vegetable components with optional recipes and detailed metadata
 - **Component Photos** - Show linked recipe photos or choose a separate component photo by URL or Wikimedia Commons search
 - **Smart Rule Engine** - 8 customizable planning rules to optimize meal selection:
-  - Avoid identical meals on consecutive days
+  - Limit repeated components
   - Avoid same food group for lunch and dinner
   - Balance cuisines throughout the week
   - Balance proteins throughout the week
@@ -142,6 +142,8 @@ Recipe names are sent to Wikimedia Commons to look for freely licensed illustrat
 
 On the **Meal Components** page, add reusable components and assign their categories. A generated breakfast contains a Breakfast component and fruit; lunch and dinner contain protein, starch and vegetables. Assign the Breakfast category and meal type to existing components you want in the breakfast slot. Older saved breakfast components remain visible until the meal is changed; replacing one requires confirmation. The planner displays separate slots with category icons and linked recipe photos. Use each slot's **+** button to add or change that component, even before the other slots are filled. Manual choices can override repetition rules. A component in multiple categories may fill multiple places in the same meal. Choose the meal types for which each component is available. Previously added simple components remain available for all meal types and can be edited. Recipes can be linked to any component. Uncategorized components remain saved but are not used in generation. **Export Component Details** exports detailed components; use **Backup Data** to include older simple entries as well.
 
+To set pairings, edit a protein component and select its suitable starches and vegetables. The lists are independent: any selected starch can be combined with any selected vegetable. Select **No starch** or **No vegetables** if the meal may omit that category. If no other item is selected in that list, the category is always omitted; select other items as well to allow either. Leave a list entirely empty to allow any available component in that category, without omission. These restrictions apply to generated and regenerated lunches and dinners; manual planner choices remain unrestricted. Selected components must also be available for that meal type. If a selected component is deleted or no longer has the right category, it is shown as unavailable when editing the protein and may leave generated slots empty. Existing plans do not change until regenerated.
+
 ### Deploying the Optional Recipe Proxy
 
 For the locally opened `index.html`, double-click `start-local-proxy.bat` and leave its window open while importing recipes. Python 3 and the Windows Python launcher are required. The app automatically connects to the helper on `127.0.0.1:43987` when no remote proxy is configured. The helper fetches public HTTPS pages only and does not store recipes. Close the window to stop it.
@@ -172,7 +174,7 @@ The proxy allows only configured HTTPS recipe domains, follows redirects only wi
 1. Go to **Rules** page
 2. For each rule:
    - Toggle on/off
-   - Adjust strength (0-100):
+   - Adjust the strength of scoring preferences (0-100):
      - 0 = Off
      - 25 = Low
      - 50 = Medium
@@ -181,15 +183,18 @@ The proxy allows only configured HTTPS recipe domains, follows redirects only wi
 
 3. Create custom rules (e.g., "Vegetarian Wednesday")
 
+The repeat rule is strict when enabled, so it has an on/off switch rather than a strength slider. Existing repeat-rule settings are replaced by this enabled rule when upgrading or restoring an older backup.
+
 ### Managing Plans
 
 - **Regenerate** individual meal types or days
 - **Add or replace** individual components with their **+** buttons
 - **Choose school lunch per day** with the checkbox in each day's planner card
-- When the consecutive-meal rule is enabled above zero, generation leaves a slot empty if any item would repeat on consecutive days. Meal-prep-friendly items may repeat for up to their configured prep days.
-- The same-day rule prevents an item from appearing in two meal slots on the same day. An item assigned to multiple categories can still fill those categories within one slot. Add more items and regenerate to fill gaps; manual choices remain available.
-- **Approve** plan to save to history
-- **Copy** previous plans from history
+- The **Limit repeated components** rule allows a breakfast component on two consecutive mornings, or a protein on two consecutive days in different meal slots (lunch then dinner, or dinner then lunch). Each can appear at most twice in the week, regardless of meal-prep settings.
+- Other components cannot repeat in different meal slots on the same day or on consecutive days, except for consecutive meal prep up to the configured limit. An item assigned to multiple categories can still fill those categories within one slot. The rule may leave slots empty; manual choices can override it.
+- **Approve** a plan to save it to history. Changing or regenerating an approved plan makes it a draft until approved again.
+- **Edit** a history entry to open its original week as a draft. Approving replaces that specific history entry; until then the entry is unchanged. Opening it may replace the current planner draft for that week.
+- **Delete** a history entry after confirmation, or **Copy** it to the selected week. Deleting history does not delete the planner's saved week.
 
 ### Shopping List
 
@@ -219,8 +224,8 @@ The planner uses a scoring system for each meal placement:
 
 1. Load all meals and rules
 2. For each day and meal time:
-   - For each available meal, calculate a score based on:
-     - Avoiding consecutive identical meals
+   - Exclude meals that violate the enabled repeat rule.
+   - Score the remaining meals based on:
      - Balancing food groups
      - Distributing cuisines
      - Spreading proteins

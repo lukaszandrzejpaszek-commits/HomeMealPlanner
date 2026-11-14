@@ -65,7 +65,10 @@ class UIManager {
             this.updateComponentPhotoPreview();
         });
         document.querySelectorAll('input[name="meal-category"]').forEach(input => {
-            input.addEventListener('change', () => this.updateMealProteinVisibility());
+            input.addEventListener('change', () => {
+                this.updateMealProteinVisibility();
+                this.renderMealPairingOptions();
+            });
         });
         document.getElementById('meal-prep-friendly').addEventListener('change', (e) => {
             document.getElementById('meal-prep-days-group').style.display = e.target.checked ? 'grid' : 'none';
@@ -214,6 +217,8 @@ class UIManager {
         const status = currentWeek?.status || 'Draft';
         statusBadge.textContent = status;
         statusBadge.className = 'status-badge ' + status.toLowerCase();
+        document.getElementById('week-approved-badge').hidden = status.toLowerCase() !== 'approved';
+        document.getElementById('history-edit-indicator').hidden = !currentWeek?.editingHistoryKey;
 
         // Calculate dashboard stats
         this.updateDashboardStats(plan);
@@ -324,6 +329,10 @@ class UIManager {
                         openRecipe.addEventListener('click', () => this.viewRecipesForMeal(item.id));
                         component.appendChild(openRecipe);
                         if (photo?.credit) component.appendChild(this.createPhotoCredit(photo.credit));
+                    } else if (meal?.omittedComponents?.includes(key)) {
+                        const omitted = document.createElement('span');
+                        omitted.textContent = 'Not needed';
+                        component.appendChild(omitted);
                     }
                     const add = document.createElement('button');
                     add.type = 'button';
@@ -381,7 +390,7 @@ class UIManager {
         );
         alert(hasPlannedMeals
             ? 'Week plan generated.' + this.getEmptySlotsMessage(plan)
-            : 'No complete meals are available. Breakfast needs breakfast and fruit components; lunch and dinner need protein, starch and vegetables.');
+            : 'No complete meals are available.' + this.getEmptySlotsMessage(plan));
     }
 
     regenerateMealType(mealType) {
@@ -394,6 +403,7 @@ class UIManager {
     getEmptySlotsMessage(plan, mealTypes = ['breakfast', 'lunch', 'dinner']) {
         let missing = 0;
         let conflicts = 0;
+        let pairings = 0;
         const available = Object.fromEntries(mealTypes.map(type =>
             [type, window.repository.getPlanningMealsByType(type.charAt(0).toUpperCase() + type.slice(1))]
         ));
@@ -401,22 +411,37 @@ class UIManager {
             mealTypes.forEach(type => {
                 if (day[type] || (type === 'lunch' && day.schoolLunch)) return;
                 if (available[type].length) conflicts++;
-                else missing++;
+                else {
+                    const slots = window.repository.getMealSlots(type);
+                    if (type !== 'breakfast' && slots.every(slot =>
+                        window.repository.getComponentsByCategory(type.charAt(0).toUpperCase() + type.slice(1), slot.category).length
+                    )) pairings++;
+                    else missing++;
+                }
             });
         });
         const messages = [];
-        if (conflicts) messages.push(`${conflicts} slot(s) left empty to follow the same-day and consecutive-meal rules.`);
+        if (conflicts) messages.push(`${conflicts} slot(s) left empty to follow the component repetition rules.`);
         if (missing) messages.push(`${missing} slot(s) lack required components for that meal type.`);
+        if (pairings) messages.push(`${pairings} slot(s) have no allowed protein, starch and vegetable combination. Check protein pairings and component meal types.`);
         if (messages.length) messages.push('Add more meals or meal components, then regenerate.');
         return messages.length ? '\n\n' + messages.join('\n') : '';
     }
 
     approvePlan() {
-        if (confirm('Approve this meal plan for the week? This will save it to history.')) {
-            const success = window.planner.approvePlan();
-            if (success) {
-                this.displayCurrentWeek();
-                alert('Plan approved and saved to history!');
+        const editingHistory = Boolean(window.planner.getCurrentWeek()?.editingHistoryKey);
+        const message = editingHistory
+            ? 'Approve this plan and replace the selected history entry?'
+            : 'Approve this meal plan for the week? This will save it to history.';
+        if (confirm(message)) {
+            try {
+                const success = window.planner.approvePlan();
+                if (success) {
+                    this.displayCurrentWeek();
+                    alert(editingHistory ? 'Plan approved and history entry updated!' : 'Plan approved and saved to history!');
+                }
+            } catch (error) {
+                alert(`Could not approve plan: ${error.message}`);
             }
         }
     }
@@ -512,8 +537,49 @@ class UIManager {
         const linkedProtein = this.currentEditingMealId &&
             window.recipeManager.getRecipesByMeal(this.currentEditingMealId)
                 .some(recipe => this.getRecipeCategories(recipe).includes('Protein'));
-        document.getElementById('meal-protein-group').hidden =
-            !this.getCheckedValues('meal-category').includes('Protein') && !linkedProtein;
+        const hidden = !this.getCheckedValues('meal-category').includes('Protein') && !linkedProtein;
+        document.getElementById('meal-protein-group').hidden = hidden;
+        document.getElementById('meal-pairing-group').hidden = hidden;
+    }
+
+    renderMealPairingOptions(pairings) {
+        const selected = pairings || {
+            starches: this.getCheckedValues('pairing-starches'),
+            vegetables: this.getCheckedValues('pairing-vegetables')
+        };
+        const allComponents = [...window.repository.getAllMeals(), ...window.repository.getSimpleMealComponents()];
+        const linkedCategories = this.currentEditingMealId
+            ? window.recipeManager.getRecipesByMeal(this.currentEditingMealId).flatMap(recipe => this.getRecipeCategories(recipe))
+            : [];
+        const ownCategories = [...this.getCheckedValues('meal-category'), ...linkedCategories];
+        const selfId = this.currentEditingMealId || '@self';
+        for (const [key, category] of [['starches', 'Starch'], ['vegetables', 'Vegetables']]) {
+            const container = document.getElementById(`meal-pairing-${key}`);
+            const selectedIds = Array.isArray(selected[key]) ? selected[key] : [];
+            const choices = allComponents.filter(item => item.id !== this.currentEditingMealId &&
+                window.repository.getMealCategories(item).includes(category));
+            if (ownCategories.includes(category)) choices.push({ id: selfId, name: 'This component itself' });
+            choices.sort((a, b) => a.name.localeCompare(b.name));
+            const hasComponents = choices.length > 0;
+            choices.unshift({ id: '@none', name: key === 'starches' ? 'No starch' : 'No vegetables' });
+            const knownIds = new Set(choices.map(item => item.id));
+            const unavailable = selectedIds.filter(id => !knownIds.has(id)).map(id => ({
+                id,
+                name: `${allComponents.find(item => item.id === id)?.name || id} (unavailable; uncheck to remove)`
+            }));
+            container.replaceChildren();
+            [...choices, ...unavailable].forEach(item => {
+                const label = document.createElement('label');
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.name = `pairing-${key}`;
+                input.value = item.id;
+                input.checked = selectedIds.includes(item.id);
+                label.append(input, document.createTextNode(item.name));
+                container.appendChild(label);
+            });
+            if (!hasComponents) container.appendChild(document.createTextNode(`No ${category.toLowerCase()} components available. Add one if needed.`));
+        }
     }
 
     setMealProtein(protein) {
@@ -558,6 +624,7 @@ class UIManager {
                 ${categories.map(category => `<span class="badge">${category}</span>`).join('')}
                 <span class="badge">${meal.cuisine}</span>
                 ${categories.includes('Protein') && meal.protein ? `<span class="badge">${meal.protein}</span>` : ''}
+                ${categories.includes('Protein') && (meal.pairings?.starches?.length || meal.pairings?.vegetables?.length) ? '<span class="badge">Pairings restricted</span>' : ''}
                 <span class="badge">${meal.difficulty}</span>
                 ${tagsHtml}
             </div>
@@ -648,6 +715,7 @@ class UIManager {
         this.resetComponentInfo();
         this.resetComponentPhoto();
         this.updateMealProteinVisibility();
+        this.renderMealPairingOptions({ starches: [], vegetables: [] });
         document.getElementById('meal-prep-days-group').style.display = 'none';
         document.getElementById('meal-modal').classList.add('active');
     }
@@ -666,6 +734,7 @@ class UIManager {
         this.setMealCategories(window.repository.normalizeCategories(
             Array.isArray(meal.categories) ? meal.categories : (meal.foodGroups || [])
         ));
+        this.renderMealPairingOptions(meal.pairings || { starches: [], vegetables: [] });
         document.getElementById('meal-cuisine').value = meal.cuisine;
         this.setMealProtein(meal.protein || '');
         document.getElementById('meal-difficulty').value = meal.difficulty;
@@ -712,6 +781,12 @@ class UIManager {
         };
 
         try {
+            if (!document.getElementById('meal-pairing-group').hidden) {
+                mealData.pairings = {
+                    starches: this.getCheckedValues('pairing-starches'),
+                    vegetables: this.getCheckedValues('pairing-vegetables')
+                };
+            }
             mealData.imageUrl = window.recipeManager.normalizeSourceUrl(mealData.imageUrl);
             mealData.imageCredit = mealData.imageUrl === this.componentPhotoUrl ? this.componentPhotoCredit : null;
             let createdMeal = null;
@@ -767,8 +842,7 @@ class UIManager {
             <div class="rule-info">
                 <h3>${rule.name}</h3>
                 <p>${rule.description || ''}</p>
-                ${rule.id === 'avoid-consecutive' || rule.id === 'avoid-same-meal-day' ? '<p>Any strength above Off prevents repeats; slots remain empty when no suitable meal is available.</p>' : ''}
-                ${rule.id === 'avoid-consecutive' ? '<p>Meal prep is limited to its configured days.</p>' : ''}
+                ${rule.id === 'component-repeat-policy' ? '<p>Slots may remain empty when no suitable combination is available. Manual choices can override this rule.</p>' : ''}
                 ${rule.type === 'custom' ? `<button class="btn btn-danger btn-sm" onclick="window.ui.deleteRule('${rule.id}')">Delete Custom Rule</button>` : ''}
             </div>
             <div class="rule-controls">
@@ -776,11 +850,11 @@ class UIManager {
                     <span>Enabled</span>
                     <div class="toggle-switch ${rule.enabled ? 'active' : ''}" onclick="window.ui.toggleRule('${rule.id}')"></div>
                 </div>
-                <div class="rule-strength">
+                ${rule.id !== 'component-repeat-policy' ? `<div class="rule-strength">
                     <input type="range" class="rule-strength-slider" min="0" max="100" value="${rule.strength}" 
                         onchange="window.ui.updateRuleStrength('${rule.id}', this.value)">
                     <span class="rule-strength-label">${strengthLabel}</span>
-                </div>
+                </div>` : ''}
             </div>
         `;
 
@@ -864,33 +938,6 @@ class UIManager {
             ? `${item.weekStartDate} – ${item.weekEndDate}`
             : '';
 
-        let previewHtml = '';
-        if (item.plan) {
-            const mondayFirst = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            const date = item.weekStartDate ? new Date(`${item.weekStartDate}T00:00:00Z`) : null;
-            const index = date && !Number.isNaN(date.getTime()) ? (date.getUTCDay() + 6) % 7 : 0;
-            const dayNames = [...mondayFirst.slice(index), ...mondayFirst.slice(0, index)];
-
-            previewHtml = dayNames.map(dayName => {
-                const dayLabel = dayName.slice(0, 3);
-                const dayPlan = item.plan[dayName];
-                const meals = [];
-
-                if (dayPlan) {
-                    if (dayPlan.breakfast && dayPlan.breakfast.name) meals.push(dayPlan.breakfast.name.substring(0, 15));
-                    if (dayPlan.lunch && dayPlan.lunch.name) meals.push(dayPlan.lunch.name.substring(0, 15));
-                    if (dayPlan.dinner && dayPlan.dinner.name) meals.push(dayPlan.dinner.name.substring(0, 15));
-                }
-
-                return `
-                    <div class="history-day-preview">
-                        <div class="history-day-preview-title">${dayLabel}</div>
-                        <div>${meals.join('<br>')}</div>
-                    </div>
-                `;
-            }).join('');
-        }
-
         element.innerHTML = `
             <div class="history-header">
                 <div>
@@ -898,16 +945,67 @@ class UIManager {
                     <div class="history-date">Approved: ${dateStr}</div>
                 </div>
                 <div class="history-actions">
-                    <button class="btn btn-secondary btn-sm">Copy to Selected Week</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="edit">Edit</button>
+                    <button type="button" class="btn btn-danger btn-sm" data-action="delete">Delete</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="copy">Copy to Selected Week</button>
                 </div>
             </div>
-            <div class="history-preview">
-                ${previewHtml}
-            </div>
+            <div class="history-preview"></div>
         `;
 
-        element.querySelector('.history-actions button').addEventListener('click', () => this.copyHistoryToCurrent(item.key));
+        if (item.plan) {
+            const mondayFirst = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const start = item.weekStartDate ? new Date(`${item.weekStartDate}T00:00:00Z`) : null;
+            const index = start && !Number.isNaN(start.getTime()) ? (start.getUTCDay() + 6) % 7 : 0;
+            const dayNames = [...mondayFirst.slice(index), ...mondayFirst.slice(0, index)];
+            const preview = element.querySelector('.history-preview');
+            dayNames.forEach(dayName => {
+                const day = document.createElement('div');
+                day.className = 'history-day-preview';
+                const title = document.createElement('div');
+                title.className = 'history-day-preview-title';
+                title.textContent = dayName.slice(0, 3);
+                day.appendChild(title);
+                const dayPlan = item.plan[dayName];
+                ['breakfast', 'lunch', 'dinner'].forEach(type => {
+                    const row = document.createElement('div');
+                    row.className = 'history-meal';
+                    const label = document.createElement('strong');
+                    label.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)}: `;
+                    const name = type === 'lunch' && dayPlan?.schoolLunch
+                        ? 'School Lunch' : dayPlan?.[type]?.name || 'Not planned';
+                    row.append(label, document.createTextNode(name));
+                    day.appendChild(row);
+                });
+                preview.appendChild(day);
+            });
+        }
+
+        element.querySelector('[data-action="edit"]').addEventListener('click', () => this.editHistoryEntry(item.key));
+        element.querySelector('[data-action="delete"]').addEventListener('click', () => this.deleteHistoryEntry(item.key));
+        element.querySelector('[data-action="copy"]').addEventListener('click', () => this.copyHistoryToCurrent(item.key));
         return element;
+    }
+
+    editHistoryEntry(key) {
+        if (!confirm('Open this history entry as a draft in its original week? This may replace that week’s current planner draft. Approving will replace this history entry.')) return;
+        try {
+            window.planner.editHistoryEntry(key);
+            this.switchPage('planner');
+        } catch (error) {
+            alert(`Could not edit history: ${error.message}`);
+        }
+    }
+
+    deleteHistoryEntry(key) {
+        if (!confirm('Delete this history entry? This cannot be undone. Any draft editing it will remain in the planner.')) return;
+        try {
+            window.historyManager.deleteHistoryEntry(key);
+            this.displayHistory();
+            alert('History entry deleted.');
+        } catch (error) {
+            alert(`Could not delete history: ${error.message}`);
+        }
     }
 
     copyHistoryToCurrent(key) {
@@ -1576,6 +1674,7 @@ class UIManager {
         document.getElementById('meal-food-groups').value = categories
             .filter(category => category !== 'Dessert').join(', ');
         this.setMealCategories(categories);
+        this.renderMealPairingOptions();
         document.getElementById('meal-tags').value = document.getElementById('recipe-tags').value;
         this.setMealProtein(categories.includes('Protein') ? this.suggestRecipeProtein() : '');
 

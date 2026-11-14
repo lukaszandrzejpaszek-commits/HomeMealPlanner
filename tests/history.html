@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>History display tests</title></head>
+<body>
+<pre id="result">Running...</pre>
+<script>
+    const stored = {};
+    Object.defineProperty(window, 'localStorage', { value: {
+        getItem: key => Object.hasOwn(stored, key) ? stored[key] : null,
+        setItem: (key, value) => { stored[key] = String(value); },
+        removeItem: key => { delete stored[key]; }
+    } });
+</script>
+<script src="../js/storage.js"></script>
+<script src="../js/repository.js"></script>
+<script src="../js/rules.js"></script>
+<script src="../js/planner.js"></script>
+<script src="../js/history.js"></script>
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const script = document.createElement('script');
+        script.src = '../js/ui.js';
+        script.onerror = () => { document.getElementById('result').textContent = 'FAILED: UI script did not load'; };
+        script.onload = () => {
+            const assert = (condition, message) => { if (!condition) throw new Error(message); };
+            try {
+                window.storage.set('rules', [{ id: 'avoid-same-meal-day', enabled: false, strength: 23 }]);
+                const migratedStorage = new window.storage.constructor();
+                let migratedRules = migratedStorage.get('rules');
+                assert(migratedRules.find(rule => rule.id === 'component-repeat-policy')?.enabled &&
+                    !migratedRules.some(rule => rule.id === 'avoid-same-meal-day'),
+                    'Legacy repeat rules must be replaced with the enabled combined rule');
+                new window.storage.constructor();
+                assert(migratedStorage.get('rules').filter(rule => rule.id === 'component-repeat-policy').length === 1,
+                    'Reloading must not duplicate the combined rule');
+                migratedStorage.set('rules', [{
+                    id: 'component-repeat-policy', type: 'builtin', name: 'Old name',
+                    description: 'Old description', enabled: false, strength: 100
+                }]);
+                new window.storage.constructor();
+                const updatedWeekly = migratedStorage.get('rules').find(rule => rule.id === 'component-repeat-policy');
+                assert(updatedWeekly.name === 'Limit repeated components' && !updatedWeekly.enabled,
+                    'Updating the combined rule description must preserve its enabled state');
+                migratedStorage.importData(JSON.stringify({
+                    rules: [{ id: 'avoid-same-meal-day', enabled: false, strength: 23 },
+                        { id: 'balance-cuisine', enabled: false, strength: 23 }]
+                }));
+                migratedRules = migratedStorage.get('rules');
+                assert(migratedRules.find(rule => rule.id === 'component-repeat-policy')?.enabled &&
+                    !migratedRules.find(rule => rule.id === 'balance-cuisine').enabled &&
+                    migratedRules.find(rule => rule.id === 'balance-cuisine').strength === 23,
+                    'Restoring an older backup must consolidate repeat rules and preserve other settings');
+                const ui = new UIManager();
+                const repeatItem = ui.createRuleItem(migratedRules.find(rule => rule.id === 'component-repeat-policy'));
+                assert(repeatItem.querySelector('.toggle-switch') && !repeatItem.querySelector('.rule-strength-slider'),
+                    'The combined strict rule must have a toggle but no misleading strength slider');
+                const history = ui.createHistoryItem({
+                    key: 'test', weekNumber: 46, year: 2026, approvedDate: '2026-11-14T12:00:00Z',
+                    weekStartDate: '2026-11-14', weekEndDate: '2026-11-20',
+                    plan: {
+                        Saturday: {
+                            breakfast: { name: 'A very long breakfast <b>name</b>' },
+                            schoolLunch: true, lunch: { name: 'Ignored lunch' }, dinner: null
+                        },
+                        Sunday: { lunch: { name: 'Sunday lunch' } }
+                    }
+                });
+                const days = history.querySelectorAll('.history-day-preview');
+                assert(days.length === 7 && days[0].querySelector('.history-day-preview-title').textContent === 'Sat' &&
+                    days[1].querySelector('.history-day-preview-title').textContent === 'Sun',
+                    'Days must follow the saved week start');
+                const saturday = Array.from(days[0].querySelectorAll('.history-meal'), row => row.textContent);
+                assert(saturday.join('|') === 'Breakfast: A very long breakfast <b>name</b>|Lunch: School Lunch|Dinner: Not planned',
+                    'Each day must show the full breakfast, school lunch and unplanned dinner in order');
+                assert(!days[0].querySelector('b'), 'Meal names must be displayed as text');
+                const sunday = Array.from(days[1].querySelectorAll('.history-meal'), row => row.textContent);
+                assert(sunday.join('|') === 'Breakfast: Not planned|Lunch: Sunday lunch|Dinner: Not planned',
+                    'Missing meals must retain their labelled lines');
+                assert(days[2].querySelectorAll('.history-meal').length === 3,
+                    'Days missing from saved history must still have three lines');
+                assert(history.querySelector('[data-action="edit"]') &&
+                    history.querySelector('[data-action="delete"]') && history.querySelector('[data-action="copy"]'),
+                    'Each entry must offer edit, delete and copy actions');
+
+                window.storage.set('settings', { planningStartDay: 'Monday' });
+                window.planner.setTargetWeek('2026-W46');
+                const originalCurrent = window.planner.getCurrentWeekInfo().weekKey;
+                const originalPlan = {
+                    Saturday: { breakfast: { id: 'old', name: 'Old breakfast', cuisine: 'Home',
+                        protein: 'N/A', difficulty: 'Easy', ingredients: [] }, schoolLunch: false }
+                };
+                const dates = { weekKey: '2026-W46@2026-11-14',
+                    weekStartDate: '2026-11-14', weekEndDate: '2026-11-20' };
+                window.storage.saveToHistory(46, 2026, originalPlan, { totalMeals: 1 }, dates);
+                window.storage.saveToHistory(46, 2026, originalPlan, { totalMeals: 1 }, dates);
+                const key = dates.weekKey;
+                const otherKey = `${key}#2`;
+                const untouchedRevision = JSON.stringify(window.storage.get('history')[otherKey]);
+                window.planner.editHistoryEntry(key);
+                assert(window.planner.getCurrentWeekInfo().weekStartDate === '2026-11-14' &&
+                    window.planner.getCurrentWeek().status === 'Draft' &&
+                    window.planner.getCurrentWeek().editingHistoryKey === key &&
+                    window.storage.get('weekly-plans')[originalCurrent],
+                    'Editing must open the original start day as a draft without losing the previous week');
+                window.planner.setSchoolLunch(0, true);
+                assert(!window.storage.get('history')[key].plan.Saturday.schoolLunch,
+                    'Draft edits must not change the history snapshot before approval');
+                const reopened = new window.planner.constructor(window.storage, window.repository, window.ruleEngine);
+                assert(reopened.getCurrentWeekInfo().weekStartDate === '2026-11-14' &&
+                    reopened.getCurrentWeek().plan.Saturday.schoolLunch,
+                    'A history draft with a different start day must survive reload');
+                reopened.editHistoryEntry(key);
+                assert(reopened.getCurrentWeek().plan.Saturday.schoolLunch,
+                    'Reopening an unfinished history edit must preserve the draft');
+                reopened.generateWeekPlan();
+                assert(reopened.getCurrentWeek().editingHistoryKey === key &&
+                    reopened.getCurrentWeek().plan.Saturday.schoolLunch,
+                    'Generating the week must retain the selected history entry');
+                reopened.approvePlan();
+                let savedHistory = window.storage.get('history');
+                assert(Object.keys(savedHistory).length === 2 && savedHistory[key].plan.Saturday.schoolLunch &&
+                    JSON.stringify(savedHistory[otherKey]) === untouchedRevision &&
+                    reopened.getCurrentWeek().status === 'Approved' &&
+                    !reopened.getCurrentWeek().editingHistoryKey,
+                    'Approval must replace only the chosen history entry and mark the planner approved');
+                const reloadedApproved = new window.planner.constructor(window.storage, window.repository, window.ruleEngine);
+                assert(reloadedApproved.getCurrentWeekInfo().weekStartDate === '2026-11-14' &&
+                    reloadedApproved.getCurrentWeek().status === 'Approved',
+                    'The approved original week must remain selected after reload');
+                reloadedApproved.setSchoolLunch(0, false);
+                assert(reloadedApproved.getCurrentWeek().status === 'Draft' &&
+                    !reloadedApproved.getCurrentWeek().approvedDate && window.storage.get('history')[key].plan.Saturday.schoolLunch,
+                    'Changing an approved plan must make it a draft without changing history');
+                reloadedApproved.approvePlan();
+                reloadedApproved.regenerateMealType('lunch');
+                assert(reloadedApproved.getCurrentWeek().status === 'Draft',
+                    'Regenerating an approved meal type must make it a draft');
+                reloadedApproved.editHistoryEntry(key);
+                assert(window.historyManager.copyHistoryToCurrent(otherKey) &&
+                    !window.storage.get('current-week').editingHistoryKey,
+                    'Copying history into an editing draft must clear the replacement target');
+                reloadedApproved.editHistoryEntry(key);
+                window.historyManager.deleteHistoryEntry(key);
+                savedHistory = window.storage.get('history');
+                assert(!savedHistory[key] && savedHistory[otherKey] &&
+                    !window.storage.get('current-week').editingHistoryKey &&
+                    !window.storage.get('weekly-plans')[key].editingHistoryKey &&
+                    window.storage.get('current-week').status === 'Draft',
+                    'Deletion must remove only the chosen entry and leave any draft as an ordinary draft');
+                let rejectedMissing = false;
+                try { window.historyManager.deleteHistoryEntry(key); } catch (error) { rejectedMissing = true; }
+                assert(rejectedMissing, 'Deleting a missing entry must report an error');
+
+                const breakfast = window.repository.addMeal({
+                    name: 'Egg', mealTypes: ['Breakfast'], categories: ['Breakfast']
+                });
+                window.repository.addMeal({ name: 'Apple', mealTypes: ['Breakfast'], categories: ['Fruit'] });
+                reloadedApproved.approvePlan();
+                reloadedApproved.setMealComponent(0, 'breakfast', 'breakfast', breakfast.id);
+                assert(reloadedApproved.getCurrentWeek().status === 'Draft',
+                    'Manually changing a component must make an approved plan a draft');
+                reloadedApproved.approvePlan();
+                reloadedApproved.regenerateDay(0);
+                assert(reloadedApproved.getCurrentWeek().status === 'Draft',
+                    'Regenerating a day must make an approved plan a draft');
+                reloadedApproved.approvePlan();
+                const replacement = window.repository.getPlanningMealsByType('Breakfast')[0];
+                reloadedApproved.replaceMeal(0, 'breakfast', replacement.id);
+                assert(reloadedApproved.getCurrentWeek().status === 'Draft',
+                    'Replacing a meal must make an approved plan a draft');
+                reloadedApproved.approvePlan();
+                reloadedApproved.generateWeekPlan();
+                assert(reloadedApproved.getCurrentWeek().status === 'Draft',
+                    'Generating the whole week must make an approved plan a draft');
+                document.getElementById('result').textContent = 'All history display tests passed.';
+            } catch (error) {
+                document.getElementById('result').textContent = `FAILED: ${error.message}`;
+                throw error;
+            }
+        };
+        document.head.appendChild(script);
+    });
+</script>
+</body>
+</html>

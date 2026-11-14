@@ -60,11 +60,10 @@ class RuleEngine {
 
     applyRule(rule, meal, plan, dayIndex, mealTimeType) {
         switch (rule.id) {
-            case 'avoid-consecutive':
-                return this.ruleAvoidConsecutive(meal, plan, dayIndex, mealTimeType);
-
-            case 'avoid-same-meal-day':
-                return this.ruleAvoidSameMealDay(meal, plan, dayIndex, mealTimeType);
+            case 'component-repeat-policy':
+                return this.ruleAvoidSameMealDay(meal, plan, dayIndex, mealTimeType) &&
+                    this.ruleAvoidConsecutive(meal, plan, dayIndex, mealTimeType, true) &&
+                    this.ruleAvoidComponentWeek(meal, plan, dayIndex, mealTimeType) ? 100 : 0;
 
             case 'avoid-same-foodgroup':
                 return this.ruleAvoidSameFoodGroup(meal, plan, dayIndex, mealTimeType);
@@ -92,8 +91,10 @@ class RuleEngine {
         }
     }
 
-    ruleAvoidConsecutive(meal, plan, dayIndex, mealTimeType) {
+    ruleAvoidConsecutive(meal, plan, dayIndex, mealTimeType, excludeWeeklyItems = false) {
+        const weeklyIds = new Set(excludeWeeklyItems ? this.getWeeklyRepeatItems(meal).map(item => item.id) : []);
         for (const item of this.getMealItems(meal)) {
+            if (weeklyIds.has(item.id)) continue;
             let consecutiveDays = 1;
             for (const direction of [-1, 1]) {
                 for (let index = dayIndex + direction; index >= 0 && index < this.days.length; index += direction) {
@@ -117,6 +118,47 @@ class RuleEngine {
         return ['breakfast', 'lunch', 'dinner'].some(type =>
             type !== mealTimeType && this.getMealItems(day[type]).some(item => ids.has(item.id))
         ) ? 0 : 100;
+    }
+
+    ruleAvoidComponentWeek(meal, plan, dayIndex, mealTimeType) {
+        for (const item of this.getWeeklyRepeatItems(meal)) {
+            const uses = [];
+            for (let index = 0; index < this.days.length; index++) {
+                const day = this.getDayPlan(plan, index);
+                if (!day) continue;
+                for (const type of ['breakfast', 'lunch', 'dinner']) {
+                    if (index === dayIndex && type === mealTimeType) continue;
+                    if (this.getWeeklyRepeatItems(day[type]).some(previous => previous.id === item.id)) {
+                        uses.push({ dayIndex: index, mealType: type });
+                    }
+                }
+            }
+            if (uses.length > 1) return 0;
+            if (uses.length === 1) {
+                const previous = uses[0];
+                const validMealTypes = mealTimeType === 'breakfast'
+                    ? previous.mealType === 'breakfast'
+                    : (mealTimeType === 'lunch' && previous.mealType === 'dinner') ||
+                      (mealTimeType === 'dinner' && previous.mealType === 'lunch');
+                if (Math.abs(previous.dayIndex - dayIndex) !== 1 || !validMealTypes) return 0;
+            }
+        }
+        return 100;
+    }
+
+    getWeeklyRepeatItems(meal) {
+        if (!meal) return [];
+        if (meal.componentItems) {
+            return [...new Map([meal.componentItems.breakfast, meal.componentItems.protein]
+                .filter(Boolean).map(item => [item.id, item])).values()];
+        }
+        if (meal.components) {
+            return this.getMealItems({ components: {
+                breakfast: meal.components.breakfast,
+                protein: meal.components.protein
+            } });
+        }
+        return this.getMealItems(meal);
     }
 
     getMealItems(meal) {

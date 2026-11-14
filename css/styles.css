@@ -302,6 +302,10 @@ body {
     color: #155724;
 }
 
+#week-approved-badge[hidden] {
+    display: none;
+}
+
 /* Week View */
 .week-container {
     margin-bottom: var(--spacing-xl);
@@ -776,6 +780,7 @@ body {
     padding: var(--spacing-md);
     border-radius: var(--border-radius);
     font-size: 0.85rem;
+    overflow-wrap: anywhere;
 }
 
 .history-day-preview-title {
@@ -785,6 +790,7 @@ body {
 
 .history-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--spacing-sm);
     margin-top: var(--spacing-md);
 }
@@ -961,7 +967,8 @@ body {
     margin-bottom: var(--spacing-lg);
 }
 
-#meal-protein-group[hidden] {
+#meal-protein-group[hidden],
+#meal-pairing-group[hidden] {
     display: none;
 }
 
