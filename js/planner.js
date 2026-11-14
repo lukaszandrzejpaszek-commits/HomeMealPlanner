@@ -424,12 +424,10 @@ class Planner {
         const statistics = this.calculatePlanStatistics(currentWeek.plan);
 
         // Save to history
-        if (currentWeek.editingHistoryKey) {
-            this.storage.replaceHistoryEntry(currentWeek.editingHistoryKey, currentWeek.plan, statistics);
-            delete currentWeek.editingHistoryKey;
-        } else {
-            this.storage.saveToHistory(info.weekNumber, info.year, currentWeek.plan, statistics, info);
-        }
+        this.storage.saveToHistory(
+            info.weekNumber, info.year, currentWeek.plan, statistics, info, currentWeek.editingHistoryKey
+        );
+        delete currentWeek.editingHistoryKey;
 
         this.recordPlanMealUsage(currentWeek.plan);
 

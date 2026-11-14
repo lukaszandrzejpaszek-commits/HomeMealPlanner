@@ -128,14 +128,20 @@
                 const dates = { weekKey: '2026-W46@2026-11-14',
                     weekStartDate: '2026-11-14', weekEndDate: '2026-11-20' };
                 window.storage.saveToHistory(46, 2026, originalPlan, { totalMeals: 1 }, dates);
-                window.storage.saveToHistory(46, 2026, originalPlan, { totalMeals: 1 }, dates);
                 const key = dates.weekKey;
-                const otherKey = `${key}#2`;
-                const untouchedRevision = JSON.stringify(window.storage.get('history')[otherKey]);
-                window.planner.editHistoryEntry(key);
+                const duplicateKey = `${key}#2`;
+                const otherKey = '2026-W46';
+                const otherDates = { weekKey: otherKey,
+                    weekStartDate: '2026-11-09', weekEndDate: '2026-11-15' };
+                window.storage.saveToHistory(46, 2026, originalPlan, { totalMeals: 1 }, otherDates);
+                const initialHistory = window.storage.get('history');
+                initialHistory[duplicateKey] = { ...structuredClone(initialHistory[key]), key: duplicateKey };
+                window.storage.set('history', initialHistory);
+                const untouchedWeek = JSON.stringify(initialHistory[otherKey]);
+                window.planner.editHistoryEntry(duplicateKey);
                 assert(window.planner.getCurrentWeekInfo().weekStartDate === '2026-11-14' &&
                     window.planner.getCurrentWeek().status === 'Draft' &&
-                    window.planner.getCurrentWeek().editingHistoryKey === key &&
+                    window.planner.getCurrentWeek().editingHistoryKey === duplicateKey &&
                     window.storage.get('weekly-plans')[originalCurrent],
                     'Editing must open the original start day as a draft without losing the previous week');
                 window.planner.setSchoolLunch(0, true);
@@ -145,20 +151,20 @@
                 assert(reopened.getCurrentWeekInfo().weekStartDate === '2026-11-14' &&
                     reopened.getCurrentWeek().plan.Saturday.schoolLunch,
                     'A history draft with a different start day must survive reload');
-                reopened.editHistoryEntry(key);
+                reopened.editHistoryEntry(duplicateKey);
                 assert(reopened.getCurrentWeek().plan.Saturday.schoolLunch,
                     'Reopening an unfinished history edit must preserve the draft');
                 reopened.generateWeekPlan();
-                assert(reopened.getCurrentWeek().editingHistoryKey === key &&
+                assert(reopened.getCurrentWeek().editingHistoryKey === duplicateKey &&
                     reopened.getCurrentWeek().plan.Saturday.schoolLunch,
                     'Generating the week must retain the selected history entry');
                 reopened.approvePlan();
                 let savedHistory = window.storage.get('history');
                 assert(Object.keys(savedHistory).length === 2 && savedHistory[key].plan.Saturday.schoolLunch &&
-                    JSON.stringify(savedHistory[otherKey]) === untouchedRevision &&
+                    !savedHistory[duplicateKey] && JSON.stringify(savedHistory[otherKey]) === untouchedWeek &&
                     reopened.getCurrentWeek().status === 'Approved' &&
                     !reopened.getCurrentWeek().editingHistoryKey,
-                    'Approval must replace only the chosen history entry and mark the planner approved');
+                    'Approval must consolidate duplicate dates, preserve different dates and mark the planner approved');
                 const reloadedApproved = new window.planner.constructor(window.storage, window.repository, window.ruleEngine);
                 assert(reloadedApproved.getCurrentWeekInfo().weekStartDate === '2026-11-14' &&
                     reloadedApproved.getCurrentWeek().status === 'Approved',
@@ -167,7 +173,16 @@
                 assert(reloadedApproved.getCurrentWeek().status === 'Draft' &&
                     !reloadedApproved.getCurrentWeek().approvedDate && window.storage.get('history')[key].plan.Saturday.schoolLunch,
                     'Changing an approved plan must make it a draft without changing history');
+                const duplicateHistory = window.storage.get('history');
+                duplicateHistory[duplicateKey] = { ...structuredClone(duplicateHistory[key]), key: duplicateKey };
+                window.storage.set('history', duplicateHistory);
                 reloadedApproved.approvePlan();
+                savedHistory = window.storage.get('history');
+                assert(Object.keys(savedHistory).length === 2 && !savedHistory[duplicateKey] &&
+                    !savedHistory[key].plan.Saturday.schoolLunch &&
+                    reloadedApproved.getCurrentWeek().status === 'Approved' &&
+                    window.storage.get('weekly-plans')[key].status === 'Approved',
+                    'Reapproving from the planner must replace history and persist approved status');
                 reloadedApproved.regenerateMealType('lunch');
                 assert(reloadedApproved.getCurrentWeek().status === 'Draft',
                     'Regenerating an approved meal type must make it a draft');
@@ -208,6 +223,39 @@
                 reloadedApproved.generateWeekPlan();
                 assert(reloadedApproved.getCurrentWeek().status === 'Draft',
                     'Generating the whole week must make an approved plan a draft');
+
+                const missingDraft = reloadedApproved.getCurrentWeek();
+                missingDraft.editingHistoryKey = 'missing';
+                reloadedApproved.saveCurrentWeek(missingDraft);
+                let rejectedApproval = false;
+                try { reloadedApproved.approvePlan(); } catch (error) { rejectedApproval = true; }
+                assert(rejectedApproval && reloadedApproved.getCurrentWeek().status === 'Draft',
+                    'A missing history entry must not produce an approved planner');
+
+                const legacyDates = { weekKey: '2026-W47',
+                    weekStartDate: '2026-11-16', weekEndDate: '2026-11-22' };
+                window.storage.set('history', {
+                    '2026-W47': { key: '2026-W47', year: 2026, weekNumber: 47, plan: originalPlan },
+                    '2026-W47#2': { key: '2026-W47#2', year: 2026, weekNumber: 47,
+                        ...legacyDates, plan: originalPlan },
+                    '2026-W47@2026-11-17': { key: '2026-W47@2026-11-17', year: 2026, weekNumber: 47,
+                        weekStartDate: '2026-11-17', weekEndDate: '2026-11-23', plan: originalPlan }
+                });
+                window.storage.saveToHistory(47, 2026, originalPlan, {}, legacyDates);
+                savedHistory = window.storage.get('history');
+                assert(Object.keys(savedHistory).length === 2 && savedHistory['2026-W47'] &&
+                    !savedHistory['2026-W47#2'] && savedHistory['2026-W47@2026-11-17'],
+                    'Legacy Monday history must consolidate without removing a different start date');
+
+                window.storage.set('history', {
+                    '2026-W47': { key: '2026-W47', year: 2026, weekNumber: 47,
+                        weekStartDate: '2026-11-17', weekEndDate: '2026-11-23', plan: originalPlan }
+                });
+                window.storage.saveToHistory(47, 2026, originalPlan, {}, legacyDates);
+                savedHistory = window.storage.get('history');
+                assert(savedHistory['2026-W47'].weekStartDate === '2026-11-17' &&
+                    savedHistory['2026-W47#2'].weekStartDate === '2026-11-16',
+                    'A key collision must not overwrite an entry for different dates');
                 document.getElementById('result').textContent = 'All history display tests passed.';
             } catch (error) {
                 document.getElementById('result').textContent = `FAILED: ${error.message}`;

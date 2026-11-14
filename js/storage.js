@@ -175,13 +175,35 @@ class Storage {
     }
 
     // History management
-    saveToHistory(weekNumber, year, plan, statistics = {}, weekDates = {}) {
+    saveToHistory(weekNumber, year, plan, statistics = {}, weekDates = {}, editingKey = null) {
         const baseKey = weekDates.weekKey || `${year}-W${String(weekNumber).padStart(2, '0')}`;
         const history = this.get('history', {});
-        let key = baseKey;
-        let revision = 2;
-        while (history[key]) key = `${baseKey}#${revision++}`;
+        if (editingKey && !Object.prototype.hasOwnProperty.call(history, editingKey)) {
+            throw new Error('The history entry no longer exists. Your draft was not approved.');
+        }
+        const isoKey = `${year}-W${String(weekNumber).padStart(2, '0')}`;
+        const matches = Object.entries(history).filter(([key, item]) => {
+            const keyDate = key.match(/@(\d{4}-\d{2}-\d{2})(?:#\d+)?$/)?.[1];
+            const startDate = item.weekStartDate || keyDate;
+            if (startDate) {
+                return startDate === weekDates.weekStartDate &&
+                    (!item.weekEndDate || item.weekEndDate === weekDates.weekEndDate);
+            }
+            return item.year === year && item.weekNumber === weekNumber &&
+                (!weekDates.weekStartDate || baseKey === isoKey);
+        }).map(([key]) => key);
+        if (editingKey && !matches.includes(editingKey)) {
+            throw new Error('The history entry no longer matches this week. Your draft was not approved.');
+        }
+        let key = !Object.prototype.hasOwnProperty.call(history, baseKey) || matches.includes(baseKey)
+            ? baseKey : editingKey || matches[0];
+        if (!key) {
+            key = baseKey;
+            let revision = 2;
+            while (Object.prototype.hasOwnProperty.call(history, key)) key = `${baseKey}#${revision++}`;
+        }
         const historyItem = {
+            ...((editingKey && history[editingKey]) || history[key]),
             weekNumber,
             year,
             key,
@@ -193,6 +215,7 @@ class Storage {
             status: 'approved'
         };
         
+        matches.forEach(existingKey => { if (existingKey !== key) delete history[existingKey]; });
         history[key] = historyItem;
         this.set('history', history);
         
@@ -203,21 +226,6 @@ class Storage {
         const key = `${year}-W${String(weekNumber).padStart(2, '0')}`;
         const history = this.get('history', {});
         return history[key] || null;
-    }
-
-    replaceHistoryEntry(key, plan, statistics) {
-        const history = this.get('history', {});
-        if (!Object.prototype.hasOwnProperty.call(history, key)) {
-            throw new Error('The history entry no longer exists. Your draft was not approved.');
-        }
-        history[key] = {
-            ...history[key],
-            plan,
-            statistics,
-            approvedDate: new Date().toISOString(),
-            status: 'approved'
-        };
-        this.set('history', history);
     }
 
     getAllHistory() {

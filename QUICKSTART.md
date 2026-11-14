@@ -29,7 +29,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 ### Step 3: Approve the Plan
 1. Review the generated meals
 2. Click **Approve Plan** to save to history
-3. Use **History → Edit** to open an entry as a draft; approving replaces that entry. **Delete** removes an entry after confirmation. Editing an approved plan makes it a draft again.
+3. Use **History → Edit** to open an entry as a draft. Approval replaces all history entries for the same date range, including duplicates; different start dates remain separate. **Delete** removes an entry after confirmation. Editing an approved plan makes it a draft again.
 4. Confirm when asked
 
 ### Step 4: Check Shopping List

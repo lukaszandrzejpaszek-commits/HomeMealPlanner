@@ -463,16 +463,13 @@ class UIManager {
     }
 
     approvePlan() {
-        const editingHistory = Boolean(window.planner.getCurrentWeek()?.editingHistoryKey);
-        const message = editingHistory
-            ? 'Approve this plan and replace the selected history entry?'
-            : 'Approve this meal plan for the week? This will save it to history.';
+        const message = 'Approve this meal plan? Existing history entries for these dates will be replaced.';
         if (confirm(message)) {
             try {
                 const success = window.planner.approvePlan();
                 if (success) {
                     this.displayCurrentWeek();
-                    alert(editingHistory ? 'Plan approved and history entry updated!' : 'Plan approved and saved to history!');
+                    alert('Plan approved and saved to history!');
                 }
             } catch (error) {
                 alert(`Could not approve plan: ${error.message}`);
@@ -1022,7 +1019,7 @@ class UIManager {
     }
 
     editHistoryEntry(key) {
-        if (!confirm('Open this history entry as a draft in its original week? This may replace that week’s current planner draft. Approving will replace this history entry.')) return;
+        if (!confirm('Open this history entry as a draft in its original week? This may replace that week’s current planner draft. Approving will replace history entries for these dates.')) return;
         try {
             window.planner.editHistoryEntry(key);
             this.switchPage('planner');
