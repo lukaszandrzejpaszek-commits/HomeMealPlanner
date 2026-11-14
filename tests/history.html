@@ -39,7 +39,8 @@
                 }]);
                 new window.storage.constructor();
                 const updatedWeekly = migratedStorage.get('rules').find(rule => rule.id === 'component-repeat-policy');
-                assert(updatedWeekly.name === 'Limit repeated components' && !updatedWeekly.enabled,
+                assert(updatedWeekly.name === 'Limit repeated components' &&
+                    updatedWeekly.description.includes('Starch and vegetables can repeat') && !updatedWeekly.enabled,
                     'Updating the combined rule description must preserve its enabled state');
                 migratedStorage.importData(JSON.stringify({
                     rules: [{ id: 'avoid-same-meal-day', enabled: false, strength: 23 },

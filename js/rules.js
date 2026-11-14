@@ -93,14 +93,15 @@ class RuleEngine {
 
     ruleAvoidConsecutive(meal, plan, dayIndex, mealTimeType, excludeWeeklyItems = false) {
         const weeklyIds = new Set(excludeWeeklyItems ? this.getWeeklyRepeatItems(meal).map(item => item.id) : []);
-        for (const item of this.getMealItems(meal)) {
+        for (const item of this.getRepeatItems(meal, ['breakfast', 'protein', 'fruit'])) {
             if (weeklyIds.has(item.id)) continue;
             let consecutiveDays = 1;
             for (const direction of [-1, 1]) {
                 for (let index = dayIndex + direction; index >= 0 && index < this.days.length; index += direction) {
                     const adjacentDay = this.getDayPlan(plan, index);
                     if (!adjacentDay || !['breakfast', 'lunch', 'dinner'].some(type =>
-                        this.getMealItems(adjacentDay[type]).some(previous => previous.id === item.id)
+                        this.getRepeatItems(adjacentDay[type], ['breakfast', 'protein', 'fruit'])
+                            .some(previous => previous.id === item.id)
                     )) break;
                     consecutiveDays++;
                 }
@@ -114,9 +115,10 @@ class RuleEngine {
     ruleAvoidSameMealDay(meal, plan, dayIndex, mealTimeType) {
         const day = this.getDayPlan(plan, dayIndex);
         if (!day) return 100;
-        const ids = new Set(this.getMealItems(meal).map(item => item.id));
+        const ids = new Set(this.getRepeatItems(meal, ['breakfast', 'protein', 'fruit']).map(item => item.id));
         return ['breakfast', 'lunch', 'dinner'].some(type =>
-            type !== mealTimeType && this.getMealItems(day[type]).some(item => ids.has(item.id))
+            type !== mealTimeType &&
+            this.getRepeatItems(day[type], ['breakfast', 'protein', 'fruit']).some(item => ids.has(item.id))
         ) ? 0 : 100;
     }
 
@@ -147,16 +149,19 @@ class RuleEngine {
     }
 
     getWeeklyRepeatItems(meal) {
+        return this.getRepeatItems(meal, ['breakfast', 'protein']);
+    }
+
+    getRepeatItems(meal, keys) {
         if (!meal) return [];
         if (meal.componentItems) {
-            return [...new Map([meal.componentItems.breakfast, meal.componentItems.protein]
+            return [...new Map(keys.map(key => meal.componentItems[key])
                 .filter(Boolean).map(item => [item.id, item])).values()];
         }
         if (meal.components) {
-            return this.getMealItems({ components: {
-                breakfast: meal.components.breakfast,
-                protein: meal.components.protein
-            } });
+            return this.getMealItems({ components: Object.fromEntries(
+                keys.map(key => [key, meal.components[key]])
+            ) });
         }
         return this.getMealItems(meal);
     }

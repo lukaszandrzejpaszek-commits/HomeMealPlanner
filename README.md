@@ -191,7 +191,7 @@ The repeat rule is strict when enabled, so it has an on/off switch rather than a
 - **Add or replace** individual components with their **+** buttons
 - **Choose school lunch per day** with the checkbox in each day's planner card
 - The **Limit repeated components** rule allows a breakfast component on two consecutive mornings, or a protein on two consecutive days in different meal slots (lunch then dinner, or dinner then lunch). Each can appear at most twice in the week, regardless of meal-prep settings.
-- Other components cannot repeat in different meal slots on the same day or on consecutive days, except for consecutive meal prep up to the configured limit. An item assigned to multiple categories can still fill those categories within one slot. The rule may leave slots empty; manual choices can override it.
+- Fruit cannot repeat in different meal slots on the same day or on consecutive days, except for consecutive meal prep up to the configured limit. Starch and vegetables can repeat; protein pairings still apply, and the food-group preference may affect scoring. The rule may leave slots empty; manual choices can override it.
 - **Approve** a plan to save it to history. Changing or regenerating an approved plan makes it a draft until approved again.
 - **Edit** a history entry to open its original week as a draft. Approving replaces that specific history entry; until then the entry is unchanged. Opening it may replace the current planner draft for that week.
 - **Delete** a history entry after confirmation, or **Copy** it to the selected week. Deleting history does not delete the planner's saved week.

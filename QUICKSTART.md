@@ -24,7 +24,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 2. Select the ISO week containing the start date; its seven-day date range is shown
 3. Click **🎲 Generate Week**
 4. Watch the algorithm create an optimal plan!
-5. The repeat rule allows a breakfast twice on consecutive mornings, or a protein twice on consecutive days in different meal slots (lunch then dinner, or dinner then lunch). Neither may appear again that week. Other components cannot repeat on the same day or consecutive days, except for configured meal prep. Limited variety can leave slots empty.
+5. The repeat rule allows a breakfast twice on consecutive mornings, or a protein twice on consecutive days in different meal slots (lunch then dinner, or dinner then lunch). Neither may appear again that week. Fruit cannot repeat on the same day or consecutive days, except for configured meal prep; starch and vegetables can repeat. Limited variety can leave slots empty.
 
 ### Step 3: Approve the Plan
 1. Review the generated meals

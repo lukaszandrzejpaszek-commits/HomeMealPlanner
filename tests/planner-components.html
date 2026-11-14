@@ -207,24 +207,41 @@
         };
         const comparison = window.planner.initializeEmptyPlan();
         comparison.Monday.breakfast = sharedRice;
-        assert(window.ruleEngine.ruleAvoidSameMealDay(meal, comparison, 0, 'lunch') === 0,
-            'Different combinations sharing an item must not repeat on the same day');
-        assert(window.ruleEngine.ruleAvoidConsecutive(meal, comparison, 1, 'lunch') === 0,
-            'Different combinations sharing an item must not repeat on consecutive days');
-
-        const prepMeal = structuredClone(meal);
-        prepMeal.componentItems.starch.mealPrepFriendly = true;
-        prepMeal.componentItems.starch.mealPrepDays = 2;
-        assert(window.ruleEngine.ruleAvoidConsecutive(prepMeal, comparison, 1, 'lunch') === 100,
-            'A shared meal-prep item should be allowed for two consecutive days');
-        assert(window.ruleEngine.ruleAvoidSameMealDay(prepMeal, comparison, 0, 'lunch') === 0,
-            'Meal-prep items must still not repeat in different meals on the same day');
-        comparison.Wednesday.breakfast = sharedRice;
-        assert(window.ruleEngine.ruleAvoidConsecutive(prepMeal, comparison, 1, 'lunch') === 0,
-            'A meal-prep item must not exceed its consecutive-day limit');
+        assert(window.ruleEngine.ruleAvoidSameMealDay(meal, comparison, 0, 'lunch') === 100 &&
+            window.ruleEngine.ruleAvoidConsecutive(meal, comparison, 1, 'lunch') === 100,
+            'Shared starch must not block meals on the same or consecutive days');
+        const fruitMeal = { componentItems: { fruit: { id: 'apple' } } };
+        comparison.Monday.breakfast = fruitMeal;
+        assert(window.ruleEngine.ruleAvoidSameMealDay(fruitMeal, comparison, 0, 'lunch') === 0 &&
+            window.ruleEngine.ruleAvoidConsecutive(fruitMeal, comparison, 1, 'breakfast') === 0,
+            'Fruit repeat restrictions must still apply');
+        const prepFruit = { componentItems: { fruit: { id: 'apple', mealPrepFriendly: true, mealPrepDays: 2 } } };
+        assert(window.ruleEngine.ruleAvoidConsecutive(prepFruit, comparison, 1, 'breakfast') === 100,
+            'Meal-prep fruit can repeat for its configured consecutive days');
+        comparison.Wednesday.breakfast = fruitMeal;
+        assert(window.ruleEngine.ruleAvoidConsecutive(prepFruit, comparison, 1, 'breakfast') === 0,
+            'Fruit meal prep must not exceed its consecutive-day limit');
 
         const weekly = { id: 'component-repeat-policy', enabled: true, strength: 100 };
         data.rules.push(weekly);
+        const tikka = { componentItems: {
+            protein: { id: 'tikka' }, starch: { id: 'rice' }, vegetable: { id: 'broccoli' }
+        } };
+        const anotherProtein = { componentItems: {
+            protein: { id: 'other-protein' }, starch: { id: 'rice' }, vegetable: { id: 'broccoli' }
+        } };
+        const sideReuse = window.planner.initializeEmptyPlan();
+        sideReuse.Friday.lunch = tikka;
+        sideReuse.Saturday.lunch = anotherProtein;
+        sideReuse.Sunday.lunch = anotherProtein;
+        assert(window.planner.selectBestMeal([tikka], sideReuse, 5, 'dinner'),
+            'The same rice and vegetables must not block a Friday-lunch to Saturday-dinner protein repeat');
+        const legacySides = window.planner.initializeEmptyPlan();
+        legacySides.Monday.lunch = { components: { protein: 'Tofu', starch: 'Rice', vegetable: 'Broccoli' } };
+        assert(window.planner.selectBestMeal(
+            [{ components: { protein: 'Beans', starch: 'Rice', vegetable: 'Broccoli' } }],
+            legacySides, 1, 'dinner'),
+            'Legacy starch and vegetable components must also be allowed to repeat');
         const weekComparison = window.planner.initializeEmptyPlan();
         weekComparison.Monday.breakfast = sharedRice;
         assert(window.ruleEngine.ruleAvoidComponentWeek(meal, weekComparison, 2, 'lunch') === 100,
