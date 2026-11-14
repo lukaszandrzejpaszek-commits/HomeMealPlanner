@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeMealPlanner - Weekly Meal Planning Made Easy</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Navigation -->
+        <nav class="main-nav">
+            <div class="nav-header">
+                <h1 class="logo">🍳 HomeMealPlanner</h1>
+                <button id="theme-toggle" class="theme-toggle" title="Toggle dark mode">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+            <ul class="nav-links">
+                <li><button class="nav-btn active" data-page="planner">Planner</button></li>
+                <li><button class="nav-btn" data-page="meals">Meals</button></li>
+                <li><button class="nav-btn" data-page="recipes">Recipes 📖</button></li>
+                <li><button class="nav-btn" data-page="rules">Rules</button></li>
+                <li><button class="nav-btn" data-page="history">History</button></li>
+                <li><button class="nav-btn" data-page="shopping">Shopping List</button></li>
+                <li><button class="nav-btn" data-page="settings">Settings</button></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Planner Page -->
+            <section id="planner-page" class="page active">
+                <div class="page-header">
+                    <h2>Weekly Meal Planner</h2>
+                    <div class="header-actions">
+                        <span id="week-display" class="week-display"></span>
+                        <button id="btn-generate-week" class="btn btn-primary">Generate Week</button>
+                        <button id="btn-approve-plan" class="btn btn-success">Approve Plan</button>
+                    </div>
+                </div>
+
+                <!-- Dashboard Widgets -->
+                <div class="dashboard-widgets">
+                    <div class="widget">
+                        <h3>Current Status</h3>
+                        <div id="status-badge" class="status-badge draft">Draft</div>
+                    </div>
+                    <div class="widget">
+                        <h3>Meal Prep Usage</h3>
+                        <div id="meal-prep-count">0 meals</div>
+                    </div>
+                    <div class="widget">
+                        <h3>Cuisine Balance</h3>
+                        <div id="cuisine-summary">No data</div>
+                    </div>
+                </div>
+
+                <!-- Week View -->
+                <div class="week-container">
+                    <div id="week-view" class="week-view">
+                        <!-- Days dynamically inserted -->
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button id="btn-regenerate-breakfast" class="btn btn-secondary">Regenerate Breakfast</button>
+                    <button id="btn-regenerate-lunch" class="btn btn-secondary">Regenerate Lunch</button>
+                    <button id="btn-regenerate-dinner" class="btn btn-secondary">Regenerate Dinner</button>
+                </div>
+            </section>
+
+            <!-- Meals Page -->
+            <section id="meals-page" class="page">
+                <div class="page-header">
+                    <h2>Meal Repository</h2>
+                    <button id="btn-add-meal" class="btn btn-primary">+ Add Meal</button>
+                </div>
+
+                <!-- Search and Filter -->
+                <div class="search-filter">
+                    <input type="text" id="meal-search" placeholder="Search meals..." class="search-input">
+                    <select id="meal-filter-type" class="filter-select">
+                        <option value="">All Types</option>
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                    </select>
+                    <select id="meal-filter-cuisine" class="filter-select">
+                        <option value="">All Cuisines</option>
+                        <option value="Italian">Italian</option>
+                        <option value="Indian">Indian</option>
+                        <option value="Mexican">Mexican</option>
+                        <option value="Asian">Asian</option>
+                        <option value="Mediterranean">Mediterranean</option>
+                        <option value="American">American</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Meals Grid -->
+                <div id="meals-grid" class="meals-grid">
+                    <!-- Meal cards dynamically inserted -->
+                </div>
+            </section>
+
+            <!-- Recipes Page -->
+            <section id="recipes-page" class="page">
+                <div class="page-header">
+                    <h2>Recipes 📖</h2>
+                    <button id="btn-add-recipe" class="btn btn-primary">+ Add Recipe</button>
+                </div>
+
+                <!-- Search -->
+                <div class="search-filter">
+                    <input type="text" id="recipe-search" placeholder="Search recipes..." class="search-input">
+                </div>
+
+                <!-- Recipes Grid -->
+                <div id="recipes-grid" class="meals-grid">
+                    <!-- Recipe cards dynamically inserted -->
+                </div>
+            </section>
+
+            <!-- Rules Page -->
+            <section id="rules-page" class="page">
+                <div class="page-header">
+                    <h2>Planning Rules</h2>
+                    <button id="btn-add-rule" class="btn btn-primary">+ Add Custom Rule</button>
+                </div>
+
+                <div id="rules-list" class="rules-list">
+                    <!-- Rules dynamically inserted -->
+                </div>
+            </section>
+
+            <!-- History Page -->
+            <section id="history-page" class="page">
+                <div class="page-header">
+                    <h2>Planning History</h2>
+                </div>
+
+                <div class="history-controls">
+                    <input type="text" id="history-search" placeholder="Search meals, cuisines..." class="search-input">
+                </div>
+
+                <div id="history-list" class="history-list">
+                    <!-- History items dynamically inserted -->
+                </div>
+            </section>
+
+            <!-- Shopping List Page -->
+            <section id="shopping-page" class="page">
+                <div class="page-header">
+                    <h2>Shopping List</h2>
+                    <div class="header-actions">
+                        <button id="btn-print-shopping" class="btn btn-secondary">Print</button>
+                        <button id="btn-export-shopping" class="btn btn-secondary">Export</button>
+                    </div>
+                </div>
+
+                <div id="shopping-list" class="shopping-list">
+                    <!-- Shopping items dynamically inserted -->
+                </div>
+            </section>
+
+            <!-- Settings Page -->
+            <section id="settings-page" class="page">
+                <div class="page-header">
+                    <h2>Settings</h2>
+                </div>
+
+                <div class="settings-form">
+                    <div class="setting-group">
+                        <label for="cook-for-days">Cook Meals For (days):</label>
+                        <input type="number" id="cook-for-days" min="1" max="7" value="2">
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="history-weeks">Weeks to Avoid in History:</label>
+                        <input type="number" id="history-weeks" min="1" max="52" value="4">
+                    </div>
+
+                    <div class="setting-group">
+                        <label>School Lunch Days:</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" class="school-lunch-day" value="Monday"> Monday</label>
+                            <label><input type="checkbox" class="school-lunch-day" value="Tuesday"> Tuesday</label>
+                            <label><input type="checkbox" class="school-lunch-day" value="Wednesday"> Wednesday</label>
+                            <label><input type="checkbox" class="school-lunch-day" value="Thursday"> Thursday</label>
+                            <label><input type="checkbox" class="school-lunch-day" value="Friday"> Friday</label>
+                            <label><input type="checkbox" class="school-lunch-day" value="Saturday"> Saturday</label>
+                            <label><input type="checkbox" class="school-lunch-day" value="Sunday"> Sunday</label>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <button id="btn-backup" class="btn btn-secondary">Backup Data</button>
+                        <button id="btn-restore" class="btn btn-secondary">Restore Data</button>
+                    </div>
+
+                    <div class="setting-group">
+                        <button id="btn-export-meals" class="btn btn-secondary">Export Meals</button>
+                        <button id="btn-import-meals" class="btn btn-secondary">Import Meals</button>
+                    </div>
+
+                    <div class="setting-group">
+                        <button id="btn-save-settings" class="btn btn-primary">Save Settings</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Add/Edit Meal Modal -->
+    <div id="meal-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 id="meal-modal-title">Add Meal</h2>
+            <form id="meal-form">
+                <div class="form-group">
+                    <label for="meal-name">Meal Name:</label>
+                    <input type="text" id="meal-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-type">Type:</label>
+                    <select id="meal-type" required>
+                        <option value="">Select Type</option>
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-cuisine">Cuisine:</label>
+                    <input type="text" id="meal-cuisine" placeholder="e.g., Italian">
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-protein">Protein:</label>
+                    <select id="meal-protein">
+                        <option value="">Select or Enter</option>
+                        <option value="Chicken">Chicken</option>
+                        <option value="Fish">Fish</option>
+                        <option value="Beef">Beef</option>
+                        <option value="Pork">Pork</option>
+                        <option value="Vegetarian">Vegetarian</option>
+                        <option value="Vegan">Vegan</option>
+                    </select>
+                    <input type="text" id="meal-protein-custom" placeholder="Or enter custom protein">
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-difficulty">Difficulty:</label>
+                    <select id="meal-difficulty">
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Meal Prep Friendly:</label>
+                    <div class="checkbox-inline">
+                        <input type="checkbox" id="meal-prep-friendly">
+                        <label for="meal-prep-friendly">Yes</label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="meal-prep-days-group" style="display:none;">
+                    <label for="meal-prep-days">Meal Prep Days:</label>
+                    <input type="number" id="meal-prep-days" min="1" max="7" value="2">
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-ingredients">Ingredients (comma-separated):</label>
+                    <textarea id="meal-ingredients" rows="3" placeholder="Chicken, Rice, Tomatoes, ..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-food-groups">Food Groups (comma-separated):</label>
+                    <textarea id="meal-food-groups" rows="2" placeholder="Rice, Chicken, ..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="meal-tags">Tags (comma-separated):</label>
+                    <input type="text" id="meal-tags" placeholder="Family Favourite, Quick, ...">
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Meal</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('meal-modal').style.display='none'">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Recipe Modal -->
+    <div id="recipe-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 id="recipe-modal-title">Add Recipe</h2>
+            <form id="recipe-form">
+                <div class="form-group">
+                    <label for="recipe-name">Recipe Name:</label>
+                    <input type="text" id="recipe-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-difficulty">Difficulty:</label>
+                    <select id="recipe-difficulty">
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-prep-time">Prep Time (minutes):</label>
+                    <input type="number" id="recipe-prep-time" min="0" value="15">
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-cook-time">Cook Time (minutes):</label>
+                    <input type="number" id="recipe-cook-time" min="0" value="30">
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-servings">Servings:</label>
+                    <input type="number" id="recipe-servings" min="1" value="4">
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-ingredients">Ingredients (one per line, format: amount unit - ingredient):</label>
+                    <textarea id="recipe-ingredients" rows="5" placeholder="2 cups flour&#10;200g butter&#10;3 eggs"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-instructions">Instructions:</label>
+                    <textarea id="recipe-instructions" rows="6" placeholder="Step-by-step instructions..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-notes">Notes:</label>
+                    <textarea id="recipe-notes" rows="3" placeholder="Tips, variations, etc."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-tags">Tags (comma-separated):</label>
+                    <input type="text" id="recipe-tags" placeholder="Quick, Vegetarian, ...">
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Recipe</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('recipe-modal').classList.remove('active')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Rule Modal -->
+    <div id="rule-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 id="rule-modal-title">Add Custom Rule</h2>
+            <form id="rule-form">
+                <div class="form-group">
+                    <label for="rule-name">Rule Name:</label>
+                    <input type="text" id="rule-name" required placeholder="e.g., Vegetarian Wednesday">
+                </div>
+
+                <div class="form-group">
+                    <label for="rule-description">Description:</label>
+                    <textarea id="rule-description" rows="2" placeholder="Describe the rule..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Rule</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('rule-modal').style.display='none'">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Meal Picker Modal -->
+    <div id="meal-picker-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Select Meal</h2>
+            <div class="meal-picker-controls">
+                <input type="text" id="picker-search" placeholder="Search meals..." class="search-input">
+                <select id="picker-type-filter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Dinner">Dinner</option>
+                </select>
+            </div>
+            <div id="meal-picker-list" class="meal-picker-list">
+                <!-- Meals dynamically inserted -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <h2 id="confirm-title">Confirm Action</h2>
+            <p id="confirm-message"></p>
+            <div class="form-actions">
+                <button id="confirm-yes" class="btn btn-primary">Yes</button>
+                <button id="confirm-no" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/repository.js"></script>
+    <script src="js/rules.js"></script>
+    <script src="js/planner.js"></script>
+    <script src="js/shopping.js"></script>
+    <script src="js/history.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/recipes.js"></script>
+    <script src="js/ui.js"></script>
+</body>
+</html>
