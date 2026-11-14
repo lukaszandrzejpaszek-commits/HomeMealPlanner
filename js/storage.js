@@ -71,6 +71,14 @@ class Storage {
                 type: 'builtin'
             },
             {
+                id: 'vary-sides',
+                name: 'Vary starches and vegetables',
+                description: 'Prefer less-used starches and vegetables while allowing repeats.',
+                enabled: true,
+                strength: 75,
+                type: 'builtin'
+            },
+            {
                 id: 'prefer-mealprep',
                 name: 'Prefer meal-prep-friendly meals',
                 description: 'Optimize for efficiency',
@@ -117,11 +125,15 @@ class Storage {
     consolidateRepeatRules(rules) {
         const defaultRule = this.getDefaultRules().find(rule => rule.id === 'component-repeat-policy');
         const oldIds = ['avoid-consecutive', 'avoid-same-meal-day', 'avoid-component-week'];
-        const updatedRules = rules.filter(rule => !oldIds.includes(rule.id));
+        let updatedRules = rules.filter(rule => !oldIds.includes(rule.id));
         const existing = updatedRules.find(rule => rule.id === defaultRule.id);
-        if (!existing) return [defaultRule, ...updatedRules];
-        return updatedRules.map(rule => rule.id === defaultRule.id && rule.type === 'builtin'
+        if (!existing) updatedRules.unshift(defaultRule);
+        else updatedRules = updatedRules.map(rule => rule.id === defaultRule.id && rule.type === 'builtin'
             ? { ...rule, name: defaultRule.name, description: defaultRule.description, strength: 100 } : rule);
+        if (!updatedRules.some(rule => rule.id === 'vary-sides')) {
+            updatedRules.push(this.getDefaultRules().find(rule => rule.id === 'vary-sides'));
+        }
+        return updatedRules;
     }
 
     set(key, value) {

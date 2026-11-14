@@ -236,12 +236,35 @@
         sideReuse.Sunday.lunch = anotherProtein;
         assert(window.planner.selectBestMeal([tikka], sideReuse, 5, 'dinner'),
             'The same rice and vegetables must not block a Friday-lunch to Saturday-dinner protein repeat');
+        const variety = { id: 'vary-sides', enabled: true, strength: 75 };
+        data.rules.push(variety);
+        const differentSides = { componentItems: {
+            protein: { id: 'tikka' }, starch: { id: 'potato' }, vegetable: { id: 'carrot' }
+        } };
+        assert(window.planner.selectBestMeal([tikka, differentSides], sideReuse, 5, 'dinner')
+            .componentItems.vegetable.id === 'carrot',
+            'Side variety must favor less-used starch and vegetables, including later days');
+        assert(window.planner.selectBestMeal([tikka], sideReuse, 5, 'dinner'),
+            'Side variety must not prohibit repeats when no alternative is available');
+        variety.enabled = false;
+        assert(window.planner.selectBestMeal([tikka, differentSides], sideReuse, 5, 'dinner')
+            .componentItems.vegetable.id === 'broccoli',
+            'Disabling side variety must restore normal scoring');
+        data.rules.pop();
+        const replacing = window.planner.initializeEmptyPlan();
+        replacing.Saturday.dinner = tikka;
+        assert(window.ruleEngine.ruleVarySides(tikka, replacing, 5, 'dinner') === 100,
+            'The slot being regenerated must not count as a previous use');
         const legacySides = window.planner.initializeEmptyPlan();
         legacySides.Monday.lunch = { components: { protein: 'Tofu', starch: 'Rice', vegetable: 'Broccoli' } };
         assert(window.planner.selectBestMeal(
             [{ components: { protein: 'Beans', starch: 'Rice', vegetable: 'Broccoli' } }],
             legacySides, 1, 'dinner'),
             'Legacy starch and vegetable components must also be allowed to repeat');
+        assert(window.ruleEngine.ruleVarySides(
+            { components: { protein: 'Beans', starch: 'Rice', vegetable: 'Broccoli' } },
+            legacySides, 1, 'dinner') < 100,
+            'Side variety must recognize legacy components');
         const weekComparison = window.planner.initializeEmptyPlan();
         weekComparison.Monday.breakfast = sharedRice;
         assert(window.ruleEngine.ruleAvoidComponentWeek(meal, weekComparison, 2, 'lunch') === 100,

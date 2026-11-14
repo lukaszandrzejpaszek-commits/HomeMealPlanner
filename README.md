@@ -10,11 +10,12 @@ A lightweight, single-page web application for family meal planning with intelli
 - **Planning Start Day** - Choose which day begins each seven-day planning period
 - **Meal Components** - Store reusable protein, starch, fruit, and vegetable components with optional recipes and detailed metadata
 - **Component Photos** - Show linked recipe photos or choose a separate component photo by URL or Wikimedia Commons search
-- **Smart Rule Engine** - 8 customizable planning rules to optimize meal selection:
+- **Smart Rule Engine** - customizable planning rules to optimize meal selection:
   - Limit repeated components
   - Avoid same food group for lunch and dinner
   - Balance cuisines throughout the week
   - Balance proteins throughout the week
+  - Prefer variety in starches and vegetables
   - Prefer meal-prep-friendly meals
   - Avoid meals from recent weeks
   - Reuse ingredients when practical
@@ -187,11 +188,13 @@ The repeat rule is strict when enabled, so it has an on/off switch rather than a
 
 ### Managing Plans
 
+- **Cuisine Balance** shows flags for recognized national cuisines and a house for Home; other cuisine labels remain unchanged. Flag images are from [flag-icons](https://github.com/lipis/flag-icons) under the [MIT license](assets/flags/LICENSE).
 - **Regenerate** individual meal types or days
 - **Add or replace** individual components with their **+** buttons
 - **Choose school lunch per day** with the checkbox in each day's planner card
 - The **Limit repeated components** rule allows a breakfast component on two consecutive mornings, or a protein on two consecutive days in different meal slots (lunch then dinner, or dinner then lunch). Each can appear at most twice in the week, regardless of meal-prep settings.
 - Fruit cannot repeat in different meal slots on the same day or on consecutive days, except for consecutive meal prep up to the configured limit. Starch and vegetables can repeat; protein pairings still apply, and the food-group preference may affect scoring. The rule may leave slots empty; manual choices can override it.
+- The **Vary starches and vegetables** preference favors sides used less often in the selected week. It does not prohibit repeats; change its strength or switch it off under Rules.
 - **Approve** a plan to save it to history. Changing or regenerating an approved plan makes it a draft until approved again.
 - **Edit** a history entry to open its original week as a draft. Approving replaces that specific history entry; until then the entry is unchanged. Opening it may replace the current planner draft for that week.
 - **Delete** a history entry after confirmation, or **Copy** it to the selected week. Deleting history does not delete the planner's saved week.
@@ -229,6 +232,7 @@ The planner uses a scoring system for each meal placement:
      - Balancing food groups
      - Distributing cuisines
      - Spreading proteins
+     - Varying starches and vegetables
      - Preferring meal prep options
      - Avoiding recent meals
      - Reusing ingredients

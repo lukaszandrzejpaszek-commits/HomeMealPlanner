@@ -28,8 +28,9 @@
                 const migratedStorage = new window.storage.constructor();
                 let migratedRules = migratedStorage.get('rules');
                 assert(migratedRules.find(rule => rule.id === 'component-repeat-policy')?.enabled &&
-                    !migratedRules.some(rule => rule.id === 'avoid-same-meal-day'),
-                    'Legacy repeat rules must be replaced with the enabled combined rule');
+                    !migratedRules.some(rule => rule.id === 'avoid-same-meal-day') &&
+                    migratedRules.find(rule => rule.id === 'vary-sides')?.enabled,
+                    'Legacy repeat rules must be replaced and side variety added');
                 new window.storage.constructor();
                 assert(migratedStorage.get('rules').filter(rule => rule.id === 'component-repeat-policy').length === 1,
                     'Reloading must not duplicate the combined rule');
@@ -48,13 +49,47 @@
                 }));
                 migratedRules = migratedStorage.get('rules');
                 assert(migratedRules.find(rule => rule.id === 'component-repeat-policy')?.enabled &&
+                    migratedRules.find(rule => rule.id === 'vary-sides')?.enabled &&
                     !migratedRules.find(rule => rule.id === 'balance-cuisine').enabled &&
                     migratedRules.find(rule => rule.id === 'balance-cuisine').strength === 23,
                     'Restoring an older backup must consolidate repeat rules and preserve other settings');
+                migratedRules.find(rule => rule.id === 'vary-sides').enabled = false;
+                migratedRules.find(rule => rule.id === 'vary-sides').strength = 25;
+                migratedStorage.set('rules', migratedRules);
+                new window.storage.constructor();
+                const migratedVariety = migratedStorage.get('rules').find(rule => rule.id === 'vary-sides');
+                assert(!migratedVariety.enabled && migratedVariety.strength === 25,
+                    'Reloading must preserve side variety settings');
                 const ui = new UIManager();
                 const repeatItem = ui.createRuleItem(migratedRules.find(rule => rule.id === 'component-repeat-policy'));
                 assert(repeatItem.querySelector('.toggle-switch') && !repeatItem.querySelector('.rule-strength-slider'),
                     'The combined strict rule must have a toggle but no misleading strength slider');
+                const mealPrepCount = document.createElement('div');
+                mealPrepCount.id = 'meal-prep-count';
+                const cuisineSummary = document.createElement('div');
+                cuisineSummary.id = 'cuisine-summary';
+                document.body.append(mealPrepCount, cuisineSummary);
+                ui.updateDashboardStats({
+                    Monday: { breakfast: { id: '1', cuisine: 'Home' },
+                        lunch: { id: '2', cuisine: 'Indian' }, dinner: { id: '3', cuisine: 'Indian' } },
+                    Tuesday: { lunch: { id: '4', cuisine: 'polish' } }
+                });
+                const flags = cuisineSummary.querySelectorAll('img.cuisine-flag');
+                const homeIcon = cuisineSummary.querySelector('.cuisine-home-icon');
+                assert(cuisineSummary.textContent === 'Indian (2), 🏠Home (1), polish (1)' &&
+                    flags.length === 2 && flags[0].src.endsWith('/assets/flags/in.svg') &&
+                    flags[1].src.endsWith('/assets/flags/pl.svg') &&
+                    [...flags].every(flag => flag.alt === '') &&
+                    homeIcon?.getAttribute('aria-hidden') === 'true',
+                    'Cuisine balance must show flags and a decorative house for Home');
+                ui.updateDashboardStats({ Monday: { lunch: { id: '5', cuisine: 'Regional' } } });
+                assert(cuisineSummary.textContent === 'Regional (1)' && !cuisineSummary.querySelector('img, span'),
+                    'Unrecognized cuisines must remain readable without an icon');
+                ui.updateDashboardStats({});
+                assert(cuisineSummary.textContent === 'No meals planned',
+                    'Cuisine balance must retain its empty state');
+                mealPrepCount.remove();
+                cuisineSummary.remove();
                 const history = ui.createHistoryItem({
                     key: 'test', weekNumber: 46, year: 2026, approvedDate: '2026-11-14T12:00:00Z',
                     weekStartDate: '2026-11-14', weekEndDate: '2026-11-20',

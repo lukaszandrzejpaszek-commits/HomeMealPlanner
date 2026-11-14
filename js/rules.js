@@ -74,6 +74,9 @@ class RuleEngine {
             case 'balance-proteins':
                 return this.ruleBalanceProteins(meal, plan, dayIndex);
 
+            case 'vary-sides':
+                return this.ruleVarySides(meal, plan, dayIndex, mealTimeType);
+
             case 'prefer-mealprep':
                 return this.rulePreferMealPrep(meal, plan);
 
@@ -250,6 +253,28 @@ class RuleEngine {
         if (count >= 5) return 10;
         if (count >= 3) return 40;
         return 100;
+    }
+
+    ruleVarySides(meal, plan, dayIndex, mealTimeType) {
+        if (!meal.componentItems && !meal.components) return 100;
+        let penalty = 0;
+        for (const key of ['starch', 'vegetable']) {
+            const item = this.getRepeatItems(meal, [key])[0];
+            if (!item) continue;
+            let count = 0;
+            for (let index = 0; index < this.days.length; index++) {
+                const day = this.getDayPlan(plan, index);
+                if (!day) continue;
+                for (const type of ['breakfast', 'lunch', 'dinner']) {
+                    if (index === dayIndex && type === mealTimeType) continue;
+                    const previous = day[type];
+                    if (previous && (previous.componentItems || previous.components) &&
+                        this.getRepeatItems(previous, [key]).some(side => side.id === item.id)) count++;
+                }
+            }
+            penalty += Math.min(100, count * 40);
+        }
+        return 100 - penalty / 2;
     }
 
     rulePreferMealPrep(meal, plan) {

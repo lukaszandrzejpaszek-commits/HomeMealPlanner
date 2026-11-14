@@ -1,5 +1,18 @@
 // ui.js - UI initialization and event handling
 
+const cuisineFlags = new Map([
+    ['american', 'us'], ['brazilian', 'br'], ['british', 'gb'],
+    ['chinese', 'cn'], ['danish', 'dk'], ['french', 'fr'],
+    ['german', 'de'], ['greek', 'gr'], ['indian', 'in'],
+    ['irish', 'ie'], ['italian', 'it'], ['japanese', 'jp'],
+    ['korean', 'kr'], ['lebanese', 'lb'], ['mexican', 'mx'],
+    ['moroccan', 'ma'], ['norwegian', 'no'], ['polish', 'pl'],
+    ['portuguese', 'pt'], ['spanish', 'es'], ['swedish', 'se'],
+    ['thai', 'th'], ['turkish', 'tr'], ['ukrainian', 'ua'],
+    ['vietnamese', 'vn']
+]);
+const cuisineFlagBase = new URL('../assets/flags/', document.currentScript.src);
+
 class UIManager {
     constructor() {
         this.currentEditingMealId = null;
@@ -375,11 +388,32 @@ class UIManager {
 
         const cuisineList = Object.entries(cuisines)
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([cuisine, count]) => `${cuisine} (${count})`)
-            .join(', ');
-
-        document.getElementById('cuisine-summary').textContent = cuisineList || 'No meals planned';
+            .slice(0, 3);
+        const summary = document.getElementById('cuisine-summary');
+        summary.replaceChildren();
+        if (!cuisineList.length) {
+            summary.textContent = 'No meals planned';
+            return;
+        }
+        cuisineList.forEach(([cuisine, count], index) => {
+            if (index) summary.append(', ');
+            const cuisineKey = cuisine.trim().toLowerCase();
+            const flag = cuisineFlags.get(cuisineKey);
+            if (flag) {
+                const image = document.createElement('img');
+                image.className = 'cuisine-flag';
+                image.src = new URL(`${flag}.svg`, cuisineFlagBase).href;
+                image.alt = '';
+                summary.appendChild(image);
+            } else if (cuisineKey === 'home') {
+                const icon = document.createElement('span');
+                icon.className = 'cuisine-home-icon';
+                icon.setAttribute('aria-hidden', 'true');
+                icon.textContent = '🏠';
+                summary.appendChild(icon);
+            }
+            summary.append(`${cuisine} (${count})`);
+        });
     }
 
     generateWeek() {
