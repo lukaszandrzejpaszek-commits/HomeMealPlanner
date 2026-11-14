@@ -109,7 +109,7 @@ HomeMealPlanner/
 3. Enter a recipe webpage URL and click **Load Recipe** to import Schema.org recipe details, including the image when provided. Review the preview and suggested category/protein before saving.
 4. Choose one or more recipe categories: Protein, Starch, Vegetables, or Dessert.
 5. To create a meal from the recipe, click **Create a new meal from this recipe**, choose one or more meal types, then save the meal. It is selected in **Connect to a meal**; save the recipe to keep the link.
-6. If a site blocks direct browser access, deploy the optional Cloudflare Worker described below and enter its URL under **Settings > Recipe import proxy URL**. Without a configured proxy, direct import remains best-effort.
+6. If a site blocks direct browser access, use the local proxy or optional Cloudflare Worker described below.
 7. Fill or review recipe details:
    - Name
    - Difficulty
@@ -125,6 +125,8 @@ HomeMealPlanner/
 On the **Meals** page, save lists of proteins, starches, and vegetables. Once all three lists have at least one option, generated plans can use combinations with one item from each list, as well as saved complete meals. Each saved meal can be assigned to any combination of breakfast, lunch, and dinner.
 
 ### Deploying the Optional Recipe Proxy
+
+For the locally opened `index.html`, double-click `start-local-proxy.bat` and leave its window open while importing recipes. Python 3 and the Windows Python launcher are required. The app automatically connects to the helper on `127.0.0.1:43987` when no remote proxy is configured. The helper fetches public HTTPS pages only and does not store recipes. Close the window to stop it.
 
 The planner and its data remain static and client-side. The optional Cloudflare Worker only fetches recipe-page HTML, so the browser does not need to access a recipe site directly.
 

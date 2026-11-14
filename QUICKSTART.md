@@ -68,7 +68,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **Import from a link**: Load recipe details and review ingredients, steps, image, category, and protein suggestion before saving
 - **Create a meal**: Click **Create a new meal from this recipe**, select one or more meal types, and save; then save the recipe to keep the link
 - **Recipe categories**: Select any combination of Protein, Starch, Vegetables, and Dessert
-- **Blocked recipe sites**: Deploy the optional Cloudflare Worker from `worker/` and save its URL in **Settings > Recipe import proxy URL**
+- **Blocked recipe sites**: For the locally opened app, double-click `start-local-proxy.bat` and leave it running. For the HTTPS site, deploy the optional Cloudflare Worker from `worker/` and save its URL in **Settings > Recipe import proxy URL**.
 - **Fill in**: Name, time, servings, ingredients, instructions
 - **Rate**: Use stars to rate your favorite recipes
 - **View**: Click "View" to see full recipe

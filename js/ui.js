@@ -1210,13 +1210,15 @@ class UIManager {
         status.className = 'recipe-import-status';
 
         try {
-            const proxyUrl = window.settingsManager.getSettings().recipeProxyUrl;
+            const configuredProxyUrl = window.settingsManager.getSettings().recipeProxyUrl;
+            const proxyUrl = configuredProxyUrl || (window.location.protocol === 'file:' ? 'http://127.0.0.1:43987/recipe' : '');
             let html;
             let imageBaseUrl = parsedUrl.href;
 
             if (proxyUrl) {
                 const parsedProxyUrl = new URL(proxyUrl);
-                if (parsedProxyUrl.protocol !== 'https:' || parsedProxyUrl.username || parsedProxyUrl.password) {
+                const isLocalProxy = !configuredProxyUrl && parsedProxyUrl.href === 'http://127.0.0.1:43987/recipe';
+                if ((!isLocalProxy && parsedProxyUrl.protocol !== 'https:') || parsedProxyUrl.username || parsedProxyUrl.password) {
                     throw new Error('The configured recipe proxy URL must use HTTPS and cannot include credentials.');
                 }
                 const response = await fetch(parsedProxyUrl.href, {
@@ -1279,7 +1281,11 @@ class UIManager {
             const hasProxy = Boolean(window.settingsManager.getSettings().recipeProxyUrl);
             const nextStep = hasProxy
                 ? 'Check that the Worker is deployed and allows this site origin and recipe domain.'
-                : 'Some sites block direct browser access (CORS). Configure a recipe proxy in Settings, or enter the details manually.';
+                : window.location.protocol === 'file:'
+                    ? error instanceof TypeError
+                        ? 'Start the local recipe proxy using start-local-proxy.bat, then try again.'
+                        : 'Check the recipe link and try again.'
+                    : 'Some sites block direct browser access (CORS). Configure a recipe proxy in Settings, or enter the details manually.';
             status.textContent = `${error.message} ${nextStep}`;
             status.className = 'recipe-import-status error';
         } finally {
