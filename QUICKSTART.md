@@ -13,7 +13,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 
 ### Step 1: Add Meal Components
 1. Click **Meal Components** in the navigation.
-2. Click **+ Add Component** and assign a category, for example Protein for chicken, Starch for rice, Fruit for an apple, or Vegetables for broccoli.
+2. Click **+ Add Component** and assign a category, for example Breakfast for porridge, Protein for chicken, Starch for rice, Fruit for an apple, or Vegetables for broccoli.
 3. Choose the meal types for each component and add more options for variety.
 4. Link a recipe to a component on the **Recipes** page, if desired.
 5. To add a photo, enter an image URL or click **Find photos** and select a Wikimedia Commons result. Searching sends your search terms to Wikimedia Commons. A linked recipe photo is shown if no component photo is set.
@@ -48,7 +48,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **Regenerate day**: Generate plan > Regenerate individual meals
 - **School lunch**: Choose school lunch separately on each day in the planner
 - **Future week**: Select a later week to generate and save a separate plan
-- **Meal components**: Breakfast combines protein, starch and fruit; lunch and dinner combine protein, starch and vegetables. Use the three **+** buttons to fill a row manually; manual choices can override repeat rules.
+- **Meal components**: Breakfast combines a Breakfast component and fruit; lunch and dinner combine protein, starch and vegetables. Assign the Breakfast category and meal type to components you want in the breakfast slot. Use the **+** buttons to fill a row manually; manual choices can override repeat rules.
 - **Multiple meal types**: Assign a component to any combination of breakfast, lunch, and dinner.
 - **Adjust rules**: Go to Rules page and toggle rules on/off or change strength
 - **Avoid consecutive meals**: When enabled above zero, the planner leaves slots empty rather than repeating an item, except for meal prep up to its configured days.
@@ -63,7 +63,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **Add recipe**: Go to Recipes > + Add Recipe
 - **Import from a link**: Load recipe details and review ingredients, steps, image, category, and protein suggestion before saving
 - **Link a recipe**: Choose a component under **Connect to a meal component**, or click **Create a component from this recipe**. Save the recipe to keep the link.
-- **Recipe categories**: Select any combination of Protein, Starch, Fruit, Vegetables, and Dessert
+- **Recipe categories**: Select any combination of Breakfast, Protein, Starch, Fruit, Vegetables, and Dessert
 - **Blocked recipe sites**: For the locally opened app, double-click `start-local-proxy.bat` and leave it running. For the HTTPS site, deploy the optional Cloudflare Worker from `worker/` and save its URL in **Settings > Recipe import proxy URL**.
 - **Website refuses the proxy**: Open the recipe in your browser and enter its details manually; some sites do not allow automated imports.
 - **Fill in**: Name, time, servings, ingredients, instructions

@@ -107,7 +107,7 @@ class Repository {
 
     normalizeCategories(input) {
         const values = Array.isArray(input) ? input : [];
-        return ['Protein', 'Starch', 'Fruit', 'Vegetables'].filter(category =>
+        return ['Breakfast', 'Protein', 'Starch', 'Fruit', 'Vegetables'].filter(category =>
             values.some(value => typeof value === 'string' && value.toLowerCase() === category.toLowerCase())
         );
     }
@@ -201,12 +201,16 @@ class Repository {
     }
 
     getMealSlots(type) {
+        if (type.toLowerCase() === 'breakfast') {
+            return [
+                { key: 'breakfast', category: 'Breakfast', icon: '🥣' },
+                { key: 'fruit', category: 'Fruit', icon: '🍎' }
+            ];
+        }
         return [
             { key: 'protein', category: 'Protein', icon: '🍗' },
             { key: 'starch', category: 'Starch', icon: '🍚' },
-            type.toLowerCase() === 'breakfast'
-                ? { key: 'fruit', category: 'Fruit', icon: '🍎' }
-                : { key: 'vegetable', category: 'Vegetables', icon: '🥦' }
+            { key: 'vegetable', category: 'Vegetables', icon: '🥦' }
         ];
     }
 
@@ -229,7 +233,7 @@ class Repository {
             cuisine: protein?.cuisine || 'Home',
             protein: protein?.protein || protein?.name || 'N/A',
             foodGroups: uniqueItems.flatMap(item => (item.foodGroups || [])
-                .filter(group => !['protein', 'starch', 'fruit', 'vegetables'].includes(group.toLowerCase()))),
+                .filter(group => !['breakfast', 'protein', 'starch', 'fruit', 'vegetables'].includes(group.toLowerCase()))),
             mealPrepFriendly: slots.every(slot => componentItems[slot.key]) &&
                 uniqueItems.every(item => item.mealPrepFriendly && item.mealPrepDays >= 2),
             mealPrepDays: Math.min(...uniqueItems.map(item => item.mealPrepDays || 0)),
@@ -249,17 +253,9 @@ class Repository {
         const groups = slots.map(slot => this.getComponentsByCategory(type, slot.category));
         if (groups.some(group => !group.length)) return [];
 
-        const combinations = [];
-        groups[0].forEach(protein => {
-            groups[1].forEach(starch => {
-                groups[2].forEach(produce => {
-                    combinations.push(this.createComponentMeal(type, {
-                        protein, starch, [slots[2].key]: produce
-                    }));
-                });
-            });
-        });
-        return combinations;
+        const combinations = groups.reduce((partial, group, index) =>
+            partial.flatMap(items => group.map(item => ({ ...items, [slots[index].key]: item }))), [{}]);
+        return combinations.map(items => this.createComponentMeal(type, items));
     }
 
     searchMeals(query) {

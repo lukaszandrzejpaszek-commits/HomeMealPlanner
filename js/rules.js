@@ -125,7 +125,7 @@ class RuleEngine {
             return [...new Map(Object.values(meal.componentItems).map(item => [item.id, item])).values()];
         }
         if (meal.components) {
-            const keys = { protein: 'proteins', starch: 'starches', fruit: 'fruits', vegetable: 'vegetables' };
+            const keys = { breakfast: 'breakfasts', protein: 'proteins', starch: 'starches', fruit: 'fruits', vegetable: 'vegetables' };
             return Object.entries(keys)
                 .filter(([key]) => typeof meal.components[key] === 'string')
                 .map(([key, group]) => ({

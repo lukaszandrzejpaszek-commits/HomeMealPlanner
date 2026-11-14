@@ -113,8 +113,8 @@
         assert(data.recipes.find(recipe => recipe.id === 'pasta-recipe').mealId === null,
             'Deleting an edited component must unlink its recipes');
 
-        const egg = window.repository.addMeal({ name: 'Egg', mealTypes: ['Breakfast'], categories: ['Protein'] });
-        const bread = window.repository.addMeal({ name: 'Bread', mealTypes: ['Breakfast'], categories: ['Starch'] });
+        const egg = window.repository.addMeal({ name: 'Egg', mealTypes: ['Breakfast'], categories: ['Breakfast'] });
+        window.repository.addMeal({ name: 'Bread', mealTypes: ['Breakfast'], categories: ['Starch'] });
         window.repository.addMeal({ name: 'Carrot', mealTypes: ['Breakfast'], categories: ['Vegetables'] });
         assert(window.repository.getPlanningMealsByType('Breakfast').length === 0,
             'Breakfast needs fruit, not a vegetable');
@@ -132,8 +132,19 @@
             'Replacing a photo URL must not keep the old photo attribution');
         const pear = window.repository.addMeal({ name: 'Pear', mealTypes: ['Breakfast'], categories: ['Fruit'] });
         const breakfasts = window.repository.getPlanningMealsByType('Breakfast');
-        assert(breakfasts.length === 2 && breakfasts.every(item => item.componentItems.fruit && !item.componentItems.vegetable),
-            'Generated breakfast must include fruit');
+        assert(breakfasts.length === 2 && breakfasts.every(item =>
+            item.componentItems.breakfast.id === egg.id && item.componentItems.fruit &&
+            !item.componentItems.protein && !item.componentItems.starch && !item.componentItems.vegetable),
+            'Generated breakfast must contain only breakfast and fruit components');
+        assert(!window.repository.getComponentsByCategory('Breakfast', 'Breakfast').some(item => item.name === 'Bread'),
+            'A breakfast meal type alone must not make a starch eligible for the breakfast category');
+        const linkedBreakfast = window.repository.addMeal({
+            name: 'Omelette', mealTypes: ['Breakfast'], categories: ['Protein']
+        });
+        data.recipes.push({ mealId: linkedBreakfast.id, categories: ['Breakfast'] });
+        assert(window.repository.getComponentsByCategory('Breakfast', 'Breakfast')
+            .some(item => item.id === linkedBreakfast.id),
+            'A linked recipe may assign the Breakfast category to its component');
         window.repository.addMeal({ name: 'Lunch rice', mealTypes: ['Lunch'], categories: ['Starch'] });
         const lunches = window.repository.getPlanningMealsByType('Lunch');
         assert(lunches.length === 1 && lunches.every(item => item.componentItems.vegetable && !item.componentItems.fruit),
@@ -141,14 +152,13 @@
 
         delete data['current-week'];
         const partial = window.planner.setMealComponent(0, 'breakfast', 'fruit', apple.id);
-        assert(partial.componentItems.fruit.id === apple.id && !partial.componentItems.protein,
+        assert(partial.componentItems.fruit.id === apple.id && !partial.componentItems.breakfast,
             'A component must be selectable without filling other slots or generating a week');
         assert(window.planner.getCurrentWeek().plan.Monday.breakfast.ingredients.includes('Apple'),
             'A partial meal must be persisted with shopping ingredients');
-        window.planner.setMealComponent(0, 'breakfast', 'protein', egg.id);
-        window.planner.setMealComponent(0, 'breakfast', 'starch', bread.id);
+        window.planner.setMealComponent(0, 'breakfast', 'breakfast', egg.id);
         const replaced = window.planner.setMealComponent(0, 'breakfast', 'fruit', pear.id);
-        assert(replaced.componentItems.protein.id === egg.id && replaced.componentItems.starch.id === bread.id &&
+        assert(replaced.componentItems.breakfast.id === egg.id &&
             replaced.componentItems.fruit.id === pear.id && !replaced.ingredients.includes('Apple'),
             'Changing a component must preserve the other slots and recalculate ingredients');
         assert(window.shoppingManager.generateShoppingList().some(item => item.name === 'Pear'),

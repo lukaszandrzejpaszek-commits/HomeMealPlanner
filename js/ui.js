@@ -284,19 +284,24 @@ class UIManager {
                     if (photo) legacy.prepend(photo.image);
                     mealItem.appendChild(legacy);
                     if (photo?.credit) mealItem.appendChild(this.createPhotoCredit(photo.credit));
-                } else if (meal?.componentItems?.vegetable && mealType === 'breakfast') {
-                    const legacy = document.createElement('button');
-                    legacy.type = 'button';
-                    legacy.className = 'planner-meal-open';
-                    legacy.textContent = `Previous vegetable: ${meal.componentItems.vegetable.name}`;
-                    legacy.addEventListener('click', () => this.viewRecipesForMeal(meal.componentItems.vegetable.id));
-                    const photo = this.createComponentPhoto(meal.componentItems.vegetable, 'planner-meal-image');
-                    if (photo) legacy.prepend(photo.image);
-                    mealItem.appendChild(legacy);
-                    if (photo?.credit) mealItem.appendChild(this.createPhotoCredit(photo.credit));
+                } else if (meal?.componentItems) {
+                    Object.entries(meal.componentItems)
+                        .filter(([key]) => !slots.some(slot => slot.key === key))
+                        .forEach(([key, item]) => {
+                            const legacy = document.createElement('button');
+                            legacy.type = 'button';
+                            legacy.className = 'planner-meal-open';
+                            legacy.textContent = `Previous ${key}: ${item.name}`;
+                            legacy.addEventListener('click', () => this.viewRecipesForMeal(item.id));
+                            const photo = this.createComponentPhoto(item, 'planner-meal-image');
+                            if (photo) legacy.prepend(photo.image);
+                            mealItem.appendChild(legacy);
+                            if (photo?.credit) mealItem.appendChild(this.createPhotoCredit(photo.credit));
+                        });
                 }
                 const components = document.createElement('div');
                 components.className = 'planner-components';
+                if (mealType === 'breakfast') components.classList.add('planner-components-breakfast');
                 slots.forEach(({ key, category, icon }) => {
                     const item = meal?.componentItems?.[key];
                     const component = document.createElement('div');
@@ -376,7 +381,7 @@ class UIManager {
         );
         alert(hasPlannedMeals
             ? 'Week plan generated.' + this.getEmptySlotsMessage(plan)
-            : 'No complete meals are available. Add protein and starch, plus fruit for breakfast or vegetables for lunch and dinner.');
+            : 'No complete meals are available. Breakfast needs breakfast and fruit components; lunch and dinner need protein, starch and vegetables.');
     }
 
     regenerateMealType(mealType) {
@@ -401,7 +406,7 @@ class UIManager {
         });
         const messages = [];
         if (conflicts) messages.push(`${conflicts} slot(s) left empty to follow the same-day and consecutive-meal rules.`);
-        if (missing) messages.push(`${missing} slot(s) lack a protein, starch, fruit or vegetable for that meal type.`);
+        if (missing) messages.push(`${missing} slot(s) lack required components for that meal type.`);
         if (messages.length) messages.push('Add more meals or meal components, then regenerate.');
         return messages.length ? '\n\n' + messages.join('\n') : '';
     }
@@ -523,7 +528,7 @@ class UIManager {
         const categories = Array.isArray(recipe.categories)
             ? recipe.categories
             : recipe.category && recipe.category !== 'Other' ? [recipe.category] : [];
-        return ['Protein', 'Starch', 'Fruit', 'Vegetables', 'Dessert']
+        return ['Breakfast', 'Protein', 'Starch', 'Fruit', 'Vegetables', 'Dessert']
             .filter(category => categories.includes(category));
     }
 

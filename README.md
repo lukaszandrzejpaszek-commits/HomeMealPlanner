@@ -32,7 +32,7 @@ A lightweight, single-page web application for family meal planning with intelli
 - **School Lunch Support** - Choose school lunch separately for each day in the weekly planner
 - **Settings** - Customize meal planning parameters
 - **Export/Import** - Export component details and recipes as JSON
-- **Component Combinations** - Breakfast combines protein, starch and fruit; lunch and dinner combine protein, starch and vegetables (school lunches are skipped).
+- **Component Combinations** - Breakfast combines a breakfast component and fruit; lunch and dinner combine protein, starch and vegetables (school lunches are skipped).
 - **Multi-Type Components** - Make a component available for any combination of breakfast, lunch, and dinner
 - **Recipe-to-Component** - Create a component prefilled from a recipe, with an editable protein suggestion
 - **Optional Recipe Proxy** - Use a Cloudflare Worker to fetch recipe pages from domains that block direct browser access
@@ -113,7 +113,7 @@ To suggest ingredients and tags, enter a component name and click **Find ingredi
 1. Go to **Recipes** page
 2. Click **+ Add Recipe**
 3. Enter a recipe webpage URL and click **Load Recipe** to import Schema.org recipe details, including the image when provided. Review the preview and suggested category/protein before saving.
-4. Choose one or more recipe categories: Protein, Starch, Fruit, Vegetables, or Dessert.
+4. Choose one or more recipe categories: Breakfast, Protein, Starch, Fruit, Vegetables, or Dessert.
 5. Select an existing component in **Connect to a meal component**, or click **Create a component from this recipe**, choose meal types and save it. Save the recipe to keep the link.
    Open linked recipes from a component's details or by clicking the component in the planner. The planner shows a linked recipe's photo when available; use the **+** button for a category to add or change that component.
 6. If a site blocks direct browser access, use the local proxy or optional Cloudflare Worker described below.
@@ -131,7 +131,7 @@ Some websites also decline automated requests from the proxy, even if the page o
 
 ### Meal Component Options
 
-On the **Meal Components** page, add reusable components and assign their categories. A generated breakfast contains protein, starch and fruit; lunch and dinner contain protein, starch and vegetables. The planner displays separate slots with category icons and linked recipe photos. Use each slot's **+** button to add or change that component, even before the other slots are filled. Manual choices can override repetition rules. A component in multiple categories may fill multiple places in the same meal. Choose the meal types for which each component is available. Previously added simple components remain available for all meal types and can be edited. Recipes can be linked to any component. Uncategorized components remain saved but are not used in generation. **Export Component Details** exports detailed components; use **Backup Data** to include older simple entries as well.
+On the **Meal Components** page, add reusable components and assign their categories. A generated breakfast contains a Breakfast component and fruit; lunch and dinner contain protein, starch and vegetables. Assign the Breakfast category and meal type to existing components you want in the breakfast slot. Older saved breakfast components remain visible until the meal is changed; replacing one requires confirmation. The planner displays separate slots with category icons and linked recipe photos. Use each slot's **+** button to add or change that component, even before the other slots are filled. Manual choices can override repetition rules. A component in multiple categories may fill multiple places in the same meal. Choose the meal types for which each component is available. Previously added simple components remain available for all meal types and can be edited. Recipes can be linked to any component. Uncategorized components remain saved but are not used in generation. **Export Component Details** exports detailed components; use **Backup Data** to include older simple entries as well.
 
 ### Deploying the Optional Recipe Proxy
 

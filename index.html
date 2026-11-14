@@ -80,13 +80,14 @@
                     <button id="btn-add-meal" class="btn btn-primary">+ Add Component</button>
                 </div>
 
-                <p class="meal-components-intro">Add reusable components and assign their categories. Breakfast combines protein, starch and fruit; lunch and dinner combine protein, starch and vegetables. Recipes are linked to components.</p>
+                <p class="meal-components-intro">Add reusable components and assign their categories. Breakfast combines a breakfast component and fruit; lunch and dinner combine protein, starch and vegetables. Recipes are linked to components.</p>
 
                 <!-- Search and Filter -->
                 <div class="search-filter">
                     <input type="text" id="meal-search" placeholder="Search components..." class="search-input">
                     <select id="meal-filter-category" class="filter-select" aria-label="Filter by component category">
                         <option value="">All Categories</option>
+                        <option value="Breakfast">Breakfast</option>
                         <option value="Protein">Protein</option>
                         <option value="Starch">Starch</option>
                         <option value="Fruit">Fruit</option>
@@ -280,6 +281,7 @@
                 <fieldset class="form-group checkbox-options">
                     <legend>Categories (select all that apply):</legend>
                     <div class="checkbox-options-grid">
+                        <label><input type="checkbox" name="meal-category" value="Breakfast"> 🥣 Breakfast</label>
                         <label><input type="checkbox" name="meal-category" value="Protein"> 🍗 Protein</label>
                         <label><input type="checkbox" name="meal-category" value="Starch"> 🍚 Starch</label>
                         <label><input type="checkbox" name="meal-category" value="Fruit"> 🍎 Fruit</label>
@@ -400,6 +402,7 @@
                 <fieldset class="form-group checkbox-options">
                     <legend>Recipe categories (select all that apply):</legend>
                     <div class="checkbox-options-grid">
+                        <label><input type="checkbox" name="recipe-category" value="Breakfast"> Breakfast</label>
                         <label><input type="checkbox" name="recipe-category" value="Protein"> Protein</label>
                         <label><input type="checkbox" name="recipe-category" value="Starch"> Starch</label>
                         <label><input type="checkbox" name="recipe-category" value="Fruit"> Fruit</label>

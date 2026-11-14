@@ -204,7 +204,7 @@ class RecipeManager {
 
     // Parse ingredients from text format
     normalizeCategories(input) {
-        const supportedCategories = ['Protein', 'Starch', 'Fruit', 'Vegetables', 'Dessert'];
+        const supportedCategories = ['Breakfast', 'Protein', 'Starch', 'Fruit', 'Vegetables', 'Dessert'];
         const values = this.parseList(input);
         return supportedCategories.filter(category => values.includes(category));
     }
