@@ -1,0 +1,166 @@
+[
+  {
+    "id": "meal-1794668909631-93b38jjpp",
+    "name": "Easy Indian Zucchini Curry",
+    "mealType": "Lunch",
+    "mealTypes": [
+      "Lunch",
+      "Dinner"
+    ],
+    "cuisine": "Other",
+    "protein": "Vegan",
+    "foodGroups": [
+      "Protein"
+    ],
+    "mealPrepFriendly": false,
+    "mealPrepDays": 2,
+    "difficulty": "Easy",
+    "ingredients": [
+      "2 tsp coconut oil",
+      "1 tsp cumin seeds",
+      "1.1 pound zucchini (about 4 cups chopped in to cubes)",
+      "1 tsp ginger (grated)",
+      "1  onion (chopped)",
+      "1  tomato (chopped)",
+      "¼ tsp turmeric powder",
+      "¼-½ tsp cayenne",
+      "1 tsp coriander powder",
+      "1 tsp cumin powder",
+      "Salt to taste",
+      "¼ cup water (optional)",
+      "1 can coconut milk (15 ounce)",
+      "1 Can Chickpeas (or use freshly cooked chickpeas( 1cup))",
+      "2 tsp chopped cilantro",
+      "2  clove garlic (chopped)",
+      "½ -¾ tsp garam Masala"
+    ],
+    "tags": [
+      "Curry",
+      "Zucchini Curry",
+      "Side Dish"
+    ],
+    "createdAt": "2026-11-14T15:08:29.631Z",
+    "lastUsed": null,
+    "useCount": 0
+  },
+  {
+    "id": "meal-1794669086883-7u2c8yr7l",
+    "name": "Chilli Con Carne",
+    "mealType": "Lunch",
+    "mealTypes": [
+      "Lunch",
+      "Dinner"
+    ],
+    "cuisine": "Other",
+    "protein": "Beef",
+    "foodGroups": [
+      "Protein"
+    ],
+    "mealPrepFriendly": false,
+    "mealPrepDays": 2,
+    "difficulty": "Easy",
+    "ingredients": [
+      "1 tbsp olive oil",
+      "3  garlic cloves (",
+      "minced)",
+      "1  onion (",
+      "diced (brown",
+      "white",
+      "yellow))",
+      "1  red capsicum ((bell pepper)",
+      "diced)",
+      "1 lb / 500g   beef mince / ground beef",
+      "3 tbsp tomato paste",
+      "800g / 28 oz  can crushed tomato",
+      "14 oz / 420g    can red kidney beans (",
+      "drained (or other beans))",
+      "2  beef bouillon cubes ((stock cubes)",
+      "crumbled (Note 1))",
+      "1 1/2 tsp sugar ((any type))",
+      "1/2 - 1 1/2 cups water",
+      "1 - 2 tsp cayenne pepper  ((adjust to taste) (Note 2))",
+      "4 tsp paprika powder",
+      "5 tsp cumin powder",
+      "2 tsp garlic powder ((or onion powder))",
+      "2 tsp onion powder",
+      "2 tsp oregano",
+      "1 1/2 tsp cooking salt / kosher salt",
+      "Rice",
+      "corn chips",
+      "tortillas  ((Note 5 for more))",
+      "Sour cream",
+      "yoghurt",
+      "grated cheese",
+      "coriander./cilantro ((Note 6 for more))"
+    ],
+    "tags": [
+      "Chili",
+      "Chilli Con Carne",
+      "Dinner"
+    ],
+    "createdAt": "2026-11-14T15:11:26.883Z",
+    "lastUsed": null,
+    "useCount": 0
+  },
+  {
+    "id": "meal-1794669272173-mybsqbpcg",
+    "name": "Chicken Tikka Masala Recipe",
+    "mealType": "Lunch",
+    "mealTypes": [
+      "Lunch",
+      "Dinner"
+    ],
+    "cuisine": "Other",
+    "protein": "Chicken",
+    "foodGroups": [
+      "Protein"
+    ],
+    "mealPrepFriendly": false,
+    "mealPrepDays": 2,
+    "difficulty": "Easy",
+    "ingredients": [
+      "1½ lbs. (700 grams) chicken boneless ((Preferably thighs",
+      "or breasts))",
+      "½ cup (120 ml) Greek yogurt ((hung curd))",
+      "½ to 1 teaspoon Kashmiri red chili powder ((use less for low heat",
+      "use 1½ teaspoons for extra heat))",
+      "1 teaspoon garam masala",
+      "¼ teaspoon turmeric",
+      "1 teaspoon coriander powder",
+      "½ teaspoon cumin powder",
+      "½ teaspoon salt",
+      "1 tablespoon lemon juice",
+      "1 tablespoon kasuri methi",
+      "1 tablespoon ginger garlic paste ((or ¾ tbsp grated ginger + ¾ tbsp grated garlic))",
+      "1 tablespoon oil ((mustard oil if you have))",
+      "3 tablespoons oil ((or ghee))",
+      "1½ cups (180 grams) onions ((fine chopped",
+      "1x - 1 large or 2 medium))",
+      "1 green chilli ((optional))",
+      "1 teaspoon salt",
+      "1 tablespoon ginger garlic paste ((or ¾ tbsp grated ginger + ¾ tbsp grated garlic))",
+      "½ to 1 teaspoon Kashmiri red chili powder ((can use up to 1 tablespoon for extra heat))",
+      "2 teaspoons garam masala ((adjust to taste))",
+      "1 tablespoon coriander powder",
+      "1 to 1½ teaspoon cumin powder",
+      "1 to 2 teaspoons sugar ((adjust to taste))",
+      "1 lb. (450 grams) tomatoes ((pureed/chopped or 10 oz. (1¼ cup) tomato puree/ passata or 14 oz can peeled tomatoes",
+      "read notes))",
+      "1 cup hot water",
+      "½ tablespoon kasuri methi ((dried fenugreek leaves",
+      "I use 1 tbsp))",
+      "½ cup heavy cream/whipping cream ((or 1x - ⅓ cup whole raw cashews",
+      "30",
+      "refer notes))",
+      "3 tablespoons heavy cream ((or any cream))",
+      "3 tablespoons coriander leaves ((fine chopped))"
+    ],
+    "tags": [
+      "Chicken tikka masala",
+      "Main"
+    ],
+    "createdAt": "2026-11-14T15:14:32.173Z",
+    "lastUsed": null,
+    "useCount": 0
+  }
+]

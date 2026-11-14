@@ -311,14 +311,35 @@ class UIManager {
             ['breakfast', 'lunch', 'dinner'].some(mealType => day[mealType])
         );
         alert(hasPlannedMeals
-            ? 'Week plan generated successfully!'
-            : 'No meals are available for this week. Add meals or complete all three dinner component lists first.');
+            ? 'Week plan generated.' + this.getEmptySlotsMessage(plan)
+            : 'No meals are available for this week. Add meals or complete all three meal component lists first.');
     }
 
     regenerateMealType(mealType) {
-        window.planner.regenerateMealType(mealType);
+        const plan = window.planner.regenerateMealType(mealType);
         this.displayCurrentWeek();
-        alert(`${mealType.charAt(0).toUpperCase() + mealType.slice(1)} meals regenerated!`);
+        alert(`${mealType.charAt(0).toUpperCase() + mealType.slice(1)} meals regenerated.` +
+            this.getEmptySlotsMessage(plan, [mealType]));
+    }
+
+    getEmptySlotsMessage(plan, mealTypes = ['breakfast', 'lunch', 'dinner']) {
+        let missing = 0;
+        let conflicts = 0;
+        const available = Object.fromEntries(mealTypes.map(type =>
+            [type, window.repository.getPlanningMealsByType(type.charAt(0).toUpperCase() + type.slice(1))]
+        ));
+        Object.values(plan).forEach(day => {
+            mealTypes.forEach(type => {
+                if (day[type] || (type === 'lunch' && day.schoolLunch)) return;
+                if (available[type].length) conflicts++;
+                else missing++;
+            });
+        });
+        const messages = [];
+        if (conflicts) messages.push(`${conflicts} slot(s) left empty to follow the same-day and consecutive-meal rules.`);
+        if (missing) messages.push(`${missing} slot(s) have no meals available for that meal type.`);
+        if (messages.length) messages.push('Add more meals or meal components, then regenerate.');
+        return messages.length ? '\n\n' + messages.join('\n') : '';
     }
 
     approvePlan() {
@@ -668,6 +689,8 @@ class UIManager {
             <div class="rule-info">
                 <h3>${rule.name}</h3>
                 <p>${rule.description || ''}</p>
+                ${rule.id === 'avoid-consecutive' || rule.id === 'avoid-same-meal-day' ? '<p>Any strength above Off prevents repeats; slots remain empty when no suitable meal is available.</p>' : ''}
+                ${rule.id === 'avoid-consecutive' ? '<p>Meal prep is limited to its configured days.</p>' : ''}
                 ${rule.type === 'custom' ? `<button class="btn btn-danger btn-sm" onclick="window.ui.deleteRule('${rule.id}')">Delete Custom Rule</button>` : ''}
             </div>
             <div class="rule-controls">

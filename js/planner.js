@@ -92,9 +92,9 @@ class Planner {
         const plan = currentWeek.plan;
         const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType));
 
-        if (meals.length === 0) {
-            return plan;
-        }
+        this.days.forEach(day => {
+            if (mealType !== 'lunch' || !plan[day].schoolLunch) plan[day][mealType] = null;
+        });
 
         for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
             const day = this.days[dayIndex];
@@ -105,9 +105,7 @@ class Planner {
             }
 
             const selected = this.selectBestMeal(meals, plan, dayIndex, mealType);
-            if (selected) {
-                dayPlan[mealType] = selected;
-            }
+            dayPlan[mealType] = selected;
         }
 
         currentWeek.plan = plan;
@@ -127,18 +125,14 @@ class Planner {
         const day = this.days[dayIndex];
         const dayPlan = plan[day];
 
+        this.mealTypes.forEach(type => { dayPlan[type] = null; });
         for (const mealType of this.mealTypes) {
             if (mealType === 'lunch' && dayPlan.schoolLunch) {
                 continue;
             }
 
             const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType));
-            if (meals.length > 0) {
-                const selected = this.selectBestMeal(meals, plan, dayIndex, mealType);
-                if (selected) {
-                    dayPlan[mealType] = selected;
-                }
-            }
+            dayPlan[mealType] = this.selectBestMeal(meals, plan, dayIndex, mealType);
         }
 
         currentWeek.plan = plan;
@@ -150,9 +144,17 @@ class Planner {
 
     selectBestMeal(availableMeals, plan, dayIndex, mealType) {
         let bestMeal = null;
-        let bestScore = -1;
+        let bestScore = -Infinity;
+        const requiredRules = this.ruleEngine.getRules().filter(rule =>
+            ['avoid-consecutive', 'avoid-same-meal-day'].includes(rule.id) && rule.enabled && rule.strength > 0
+        );
 
         for (const meal of availableMeals) {
+            if (requiredRules.some(rule =>
+                this.ruleEngine.applyRule(rule, meal, plan, dayIndex, mealType) === 0
+            )) {
+                continue;
+            }
             const score = this.ruleEngine.scoreMealPlacement(meal, plan, dayIndex, mealType);
 
             if (score > bestScore) {
@@ -161,7 +163,7 @@ class Planner {
             }
         }
 
-        return bestMeal || availableMeals[0];
+        return bestMeal;
     }
 
     replaceMeal(dayIndex, mealType, newMealId) {

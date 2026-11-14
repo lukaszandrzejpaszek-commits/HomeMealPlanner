@@ -63,6 +63,9 @@ class RuleEngine {
             case 'avoid-consecutive':
                 return this.ruleAvoidConsecutive(meal, plan, dayIndex, mealTimeType);
 
+            case 'avoid-same-meal-day':
+                return this.ruleAvoidSameMealDay(meal, plan, dayIndex, mealTimeType);
+
             case 'avoid-same-foodgroup':
                 return this.ruleAvoidSameFoodGroup(meal, plan, dayIndex, mealTimeType);
 
@@ -90,23 +93,25 @@ class RuleEngine {
     }
 
     ruleAvoidConsecutive(meal, plan, dayIndex, mealTimeType) {
-        if (dayIndex === 0) return 100;
-
-        const prevDay = this.getDayPlan(plan, dayIndex - 1);
-        if (!prevDay) return 100;
-        const prevMeal = prevDay[mealTimeType];
-
-        if (!prevMeal || !prevMeal.id) return 100;
-
-        if (prevMeal.id === meal.id) {
-            // Allow if both are meal prep friendly with 2+ days
-            if (meal.mealPrepFriendly && meal.mealPrepDays >= 2) {
-                return 100;
+        let consecutiveDays = 1;
+        for (const direction of [-1, 1]) {
+            for (let index = dayIndex + direction; index >= 0 && index < this.days.length; index += direction) {
+                const adjacentDay = this.getDayPlan(plan, index);
+                if (!adjacentDay || !['breakfast', 'lunch', 'dinner'].some(type => adjacentDay[type]?.id === meal.id)) break;
+                consecutiveDays++;
             }
-            return 0; // Bad
         }
+        if (consecutiveDays === 1) return 100;
+        return meal.mealPrepFriendly && meal.mealPrepDays >= 2 && consecutiveDays <= meal.mealPrepDays
+            ? 100 : 0;
+    }
 
-        return 100;
+    ruleAvoidSameMealDay(meal, plan, dayIndex, mealTimeType) {
+        const day = this.getDayPlan(plan, dayIndex);
+        if (!day) return 100;
+        return ['breakfast', 'lunch', 'dinner'].some(type =>
+            type !== mealTimeType && day[type]?.id === meal.id
+        ) ? 0 : 100;
     }
 
     ruleAvoidSameFoodGroup(meal, plan, dayIndex, mealTimeType) {

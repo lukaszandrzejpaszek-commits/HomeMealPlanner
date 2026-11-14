@@ -12,8 +12,12 @@ class Storage {
         if (!this.get('meals')) {
             this.set('meals', []);
         }
-        if (!this.get('rules')) {
+        const rules = this.get('rules');
+        if (!rules) {
             this.set('rules', this.getDefaultRules());
+        } else if (!rules.some(rule => rule.id === 'avoid-same-meal-day')) {
+            const newRule = this.getDefaultRules().find(rule => rule.id === 'avoid-same-meal-day');
+            this.set('rules', [...rules, newRule]);
         }
         if (!this.get('settings')) {
             this.set('settings', this.getDefaultSettings());
@@ -38,6 +42,14 @@ class Storage {
                 id: 'avoid-consecutive',
                 name: 'Avoid identical meals on consecutive days',
                 description: 'Exception: Allowed if meal prep friendly with 2+ prep days',
+                enabled: true,
+                strength: 75,
+                type: 'builtin'
+            },
+            {
+                id: 'avoid-same-meal-day',
+                name: 'Avoid identical meals on the same day',
+                description: 'Do not plan the same meal for more than one meal time on a day',
                 enabled: true,
                 strength: 75,
                 type: 'builtin'

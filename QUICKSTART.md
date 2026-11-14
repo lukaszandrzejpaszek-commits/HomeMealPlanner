@@ -57,6 +57,8 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **Meal components**: On Meals, add proteins, starches, and vegetables in separate columns. Generated plans can combine one item from each or use saved complete meals; school lunches are skipped.
 - **Multiple meal types**: Assign a saved meal to any combination of breakfast, lunch, and dinner.
 - **Adjust rules**: Go to Rules page and toggle rules on/off or change strength
+- **Avoid consecutive meals**: When enabled above zero, the planner leaves slots empty rather than repeating, except for meal prep up to its configured days.
+- **Avoid same-day repeats**: When enabled above zero, the same meal cannot be generated twice on one day.
 
 ### Shopping
 - **Mark purchased**: Check off items as you shop

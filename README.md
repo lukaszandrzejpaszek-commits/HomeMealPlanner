@@ -168,6 +168,8 @@ The proxy allows only configured HTTPS recipe domains, follows redirects only wi
 - **Regenerate** individual meal types or days
 - **Replace** specific meals by clicking on them
 - **Choose school lunch per day** with the checkbox in each day's planner card
+- When the consecutive-meal rule is enabled above zero, generation leaves a slot empty if every available meal would repeat. Meal-prep-friendly meals may repeat for up to their configured prep days. Add more meals or components and regenerate to fill gaps; manual choices remain available.
+- The same-day rule also leaves a slot empty rather than using an identical meal twice in a day when enabled above zero.
 - **Approve** plan to save to history
 - **Copy** previous plans from history
 

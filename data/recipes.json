@@ -1,0 +1,410 @@
+[
+  {
+    "id": "recipe-1794668922216-iismdy24g",
+    "mealId": "meal-1794668909631-93b38jjpp",
+    "name": "Easy Indian Zucchini Curry",
+    "category": "Protein",
+    "categories": [
+      "Protein"
+    ],
+    "sourceUrl": "https://www.mrishtanna.com/healthy-zucchini-chickpeas-curry/",
+    "imageUrl": "https://www.mrishtanna.com/wp-content/uploads/2017/03/zucchini-curry-recipe-1.jpg",
+    "prepTime": 6,
+    "cookTime": 24,
+    "servings": 4,
+    "difficulty": "Easy",
+    "instructions": "Heat olive oil in a pan on medium heat.\nAdd cumin seeds and let them sizzle.\nAdd grated ginger and garlic; saute until fragrant.\nAdd onions and cook until transparent.\nStir in chopped tomatoes and cook until softened.\nAdd turmeric, cayenne, coriander powder, and cumin powder. Stir well, cover, and simmer for 2–3 minutes.\nAdd chopped zucchini, salt, and chickpeas. Stir gently and cook for 5-8 minutes.\nPour in coconut milk, garam masala, cover, and simmer for 5 minutes.\nTurn off heat and garnish with chopped cilantro.",
+    "ingredients": [
+      {
+        "amount": 2,
+        "unit": "tsp",
+        "name": "coconut oil"
+      },
+      {
+        "amount": 1,
+        "unit": "tsp",
+        "name": "cumin seeds"
+      },
+      {
+        "amount": 1.1,
+        "unit": "pound",
+        "name": "zucchini (about 4 cups chopped in to cubes)"
+      },
+      {
+        "amount": 1,
+        "unit": "tsp",
+        "name": "ginger (grated)"
+      },
+      {
+        "amount": 1,
+        "unit": "onion",
+        "name": "(chopped)"
+      },
+      {
+        "amount": 1,
+        "unit": "tomato",
+        "name": "(chopped)"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "¼ tsp turmeric powder"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "¼-½ tsp cayenne"
+      },
+      {
+        "amount": 1,
+        "unit": "tsp",
+        "name": "coriander powder"
+      },
+      {
+        "amount": 1,
+        "unit": "tsp",
+        "name": "cumin powder"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "Salt to taste"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "¼ cup water (optional)"
+      },
+      {
+        "amount": 1,
+        "unit": "can",
+        "name": "coconut milk (15 ounce)"
+      },
+      {
+        "amount": 1,
+        "unit": "Can",
+        "name": "Chickpeas (or use freshly cooked chickpeas( 1cup))"
+      },
+      {
+        "amount": 2,
+        "unit": "tsp",
+        "name": "chopped cilantro"
+      },
+      {
+        "amount": 2,
+        "unit": "clove",
+        "name": "garlic (chopped)"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "½ -¾ tsp garam Masala"
+      }
+    ],
+    "notes": "This is an easy, vegan, one pan Indian style zucchini curry. And it is a coconut milk-based gravy and flavored with Indian spices.",
+    "tags": [
+      "Curry",
+      "Zucchini Curry",
+      "Side Dish"
+    ],
+    "createdAt": "2026-11-14T15:08:42.216Z",
+    "lastModified": "2026-11-14T15:08:42.216Z",
+    "rating": 5,
+    "makeAgain": true
+  },
+  {
+    "id": "recipe-1794669113401-4tuwjvph5",
+    "mealId": "meal-1794669086883-7u2c8yr7l",
+    "name": "Chilli Con Carne",
+    "category": "Protein",
+    "categories": [
+      "Protein"
+    ],
+    "sourceUrl": "https://www.recipetineats.com/chilli-con-carne/#h-chilli-con-carne-recipe",
+    "imageUrl": "https://www.recipetineats.com/tachyon/2016/06/Chili-Con-Carne_8.jpg",
+    "prepTime": 10,
+    "cookTime": 30,
+    "servings": 5,
+    "difficulty": "Easy",
+    "instructions": "Heat oil in a large skillet over medium high heat. Add garlic and onion, cook for 1 minute, then add capsicum and cook for 2 minutes until onion is translucent.\nTurn heat up to high and add beef. Cook, breaking it up as you go, until mostly browned.\nAdd Chili Spice Mix. Cook until beef is browned all over. (This step helps release extra flavour from the spices)\nAdd remaining ingredients, with 1/2 cup of water for Quick Cook or 1 1/2 cups for Slow Cook. Bring to simmer, then adjust heat per step below:\nQuick Cook - 20 to 40 minutes, uncovered, on medium low heat so it's bubbling gently; OR\nSlow Cook - 1.5 hours to 2 hours, covered, on low heat so it's bubbling very gently. (Note 3 Slow Cooker)\nAdjust salt to taste just before serving.\nServe over rice, or ladle into bowls and serve with corn chips or warm tortillas on the side with Toppings of choice (Note 6). See Note 7 for more serving options. My usual: Either over rice or with corn chips, always with sour cream, cheese and coriander.",
+    "ingredients": [
+      {
+        "amount": 1,
+        "unit": "tbsp",
+        "name": "olive oil"
+      },
+      {
+        "amount": 3,
+        "unit": "garlic",
+        "name": "cloves (, minced)"
+      },
+      {
+        "amount": 1,
+        "unit": "onion",
+        "name": "(, diced (brown, white, yellow))"
+      },
+      {
+        "amount": 1,
+        "unit": "red",
+        "name": "capsicum ((bell pepper), diced)"
+      },
+      {
+        "amount": 1,
+        "unit": "lb",
+        "name": "/ 500g   beef mince / ground beef"
+      },
+      {
+        "amount": 3,
+        "unit": "tbsp",
+        "name": "tomato paste"
+      },
+      {
+        "amount": 800,
+        "unit": "g",
+        "name": "/ 28 oz  can crushed tomato"
+      },
+      {
+        "amount": 14,
+        "unit": "oz",
+        "name": "/ 420g    can red kidney beans (, drained (or other beans))"
+      },
+      {
+        "amount": 2,
+        "unit": "beef",
+        "name": "bouillon cubes ((stock cubes), crumbled (Note 1))"
+      },
+      {
+        "amount": 1,
+        "unit": "1",
+        "name": "/2 tsp sugar ((any type))"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "1/2 - 1 1/2 cups water"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "1 - 2 tsp cayenne pepper  ((adjust to taste) (Note 2))"
+      },
+      {
+        "amount": 4,
+        "unit": "tsp",
+        "name": "paprika powder"
+      },
+      {
+        "amount": 5,
+        "unit": "tsp",
+        "name": "cumin powder"
+      },
+      {
+        "amount": 2,
+        "unit": "tsp",
+        "name": "garlic powder ((or onion powder))"
+      },
+      {
+        "amount": 2,
+        "unit": "tsp",
+        "name": "onion powder"
+      },
+      {
+        "amount": 2,
+        "unit": "tsp",
+        "name": "oregano"
+      },
+      {
+        "amount": 1,
+        "unit": "1",
+        "name": "/2 tsp cooking salt / kosher salt"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "Rice, corn chips, tortillas  ((Note 5 for more))"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "Sour cream, yoghurt, grated cheese, coriander./cilantro ((Note 6 for more))"
+      }
+    ],
+    "notes": "Recipe video above. Everybody&#39;s favourite Chili, nice and saucy! Made with a from-scratch Chili Powder rather than a store bought mix - it&#39;s so much more reliable and you just need pantry staples. Don&#39;t skip the beef bouillon cubes (stock cube) - it adds so much more flavour into the sauce than using just salt, or even liquid beef stock.Make a quick midweek version though when you&#39;ve got the time, it&#39;s well worth slow cooking. See notes for Serving and Topping options!",
+    "tags": [
+      "Chili",
+      "Chilli Con Carne",
+      "Dinner"
+    ],
+    "createdAt": "2026-11-14T15:11:53.401Z",
+    "lastModified": "2026-11-14T15:11:53.401Z",
+    "rating": 5,
+    "makeAgain": true
+  },
+  {
+    "id": "recipe-1794669274410-kptdpcs84",
+    "mealId": "meal-1794669272173-mybsqbpcg",
+    "name": "Chicken Tikka Masala Recipe",
+    "category": "Protein",
+    "categories": [
+      "Protein"
+    ],
+    "sourceUrl": "https://www.indianhealthyrecipes.com/chicken-tikka-masala/",
+    "imageUrl": "https://www.indianhealthyrecipes.com/wp-content/uploads/2022/06/chicken-tikka-masala.jpg",
+    "prepTime": 20,
+    "cookTime": 40,
+    "servings": 6,
+    "difficulty": "Easy",
+    "instructions": "Cube chicken to 1 to 1½ inch pieces. Add them to a mixing bowl. Make sure there is no excess moisture in your chicken. If you want you may pat dry with a few kitchen tissues.\nAdd red chilli powder, garam masala, cumin powder, coriander powder, turmeric, salt, lemon juice, oil, ginger garlic paste, yogurt and kasuri methi. Skip the lemon juice if your yogurt is sour.\nMix well. Cover with a cling wrap and refrigerate for minimum of 8 hours and up to 48 hours. If you are in a rush, you may cut down to 3 hours.\nHeat oil or ghee in a pot or pan. Add onions and sprinkle 1 teaspoon salt. Saute until deep golden, for 10 to 12 mins.\nAdd ginger garlic paste and green chilli. Saute until aromatic, for 40 to 60 seconds.\nReduce the heat to low. Add red chilli powder, coriander powder, garam masala and cumin powder. Stir well quickly.\nAdd the tomatoes and cook on a medium high heat until the onion tomato masala becomes really thick. (If using fresh tomatoes, it takes about 7 to 8 mins and tomato puree/passata takes only 2 minutes)\nPour hot water and mix well. Bring to a rolling boil and cover. Simmer until thick, for about 12 to 14 mins.\nOptional - Cool down and blend to a smooth puree. Return it to the pot and heat up. This step cuts down the acidity from canned tomatoes.\nGrill in Oven : While the gravy simmers, thread the chicken to the metal skewers or soaked bamboo skewers and place them in a prepared tray. Bake them in a preheated oven at 460 F or 240 C for 9 to 10 mins. Turn them to the other side with a tong and grill then for another 9 to 10 mins. To char the chicken, broil for 2 to 3 mins or until slightly charred.\nOr In a Skillet: Pour 1 tbsp oil to a skillet and heat it well. Place the chicken tikka one by one, spacing them apart. Cook on a medium high heat for 3 mins, turn them to the other side with a tong and cook for another 3 mins, until charred and   not essentially fully cooked. Remove to a plate and Cook in batches.\nOr In the Air fryer: Thread on skewers and place them in the basket or in the tray. Air fry for 6 mins, at 400 F or 200 C. Turn them with tongs and air fry for another 6 mins. If they dry out, you may baste with marinade and continue for another 2 mins, until slightly charred.\nAfter 12 to 14 mins of simmering the tikka masala sauce, add sugar and the cream (or cashew cream, check notes to make your own). Stir well and cook for a few minutes until thick, creamy and aromatic. (Check video for consistency)\nAdd the grilled chicken tikka and crushed kasuri methi. (Make sure your gravy has reached a thick gravy consistency/serving consistency, before adding chicken. If it&#39;s too thick add more hot water). Stir and cook for 2 to 3 mins until chicken tikka is soft and tender. Taste test and add more salt, garam masala and sugar if needed.\nTurn off and garnish with cream and coriander leaves. Serve chicken tikka masala with Butter Naan, roti, paratha, Basmati rice or Jeera rice.",
+    "ingredients": [
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "1½ lbs. (700 grams) chicken boneless ((Preferably thighs, or breasts))"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "½ cup (120 ml) Greek yogurt ((hung curd))"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "½ to 1 teaspoon Kashmiri red chili powder ((use less for low heat, use 1½ teaspoons for extra heat))"
+      },
+      {
+        "amount": 1,
+        "unit": "teaspoon",
+        "name": "garam masala"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "¼ teaspoon turmeric"
+      },
+      {
+        "amount": 1,
+        "unit": "teaspoon",
+        "name": "coriander powder"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "½ teaspoon cumin powder"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "½ teaspoon salt"
+      },
+      {
+        "amount": 1,
+        "unit": "tablespoon",
+        "name": "lemon juice"
+      },
+      {
+        "amount": 1,
+        "unit": "tablespoon",
+        "name": "kasuri methi"
+      },
+      {
+        "amount": 1,
+        "unit": "tablespoon",
+        "name": "ginger garlic paste ((or ¾ tbsp grated ginger + ¾ tbsp grated garlic))"
+      },
+      {
+        "amount": 1,
+        "unit": "tablespoon",
+        "name": "oil ((mustard oil if you have))"
+      },
+      {
+        "amount": 3,
+        "unit": "tablespoons",
+        "name": "oil ((or ghee))"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "1½ cups (180 grams) onions ((fine chopped, 1x - 1 large or 2 medium))"
+      },
+      {
+        "amount": 1,
+        "unit": "green",
+        "name": "chilli ((optional))"
+      },
+      {
+        "amount": 1,
+        "unit": "teaspoon",
+        "name": "salt"
+      },
+      {
+        "amount": 1,
+        "unit": "tablespoon",
+        "name": "ginger garlic paste ((or ¾ tbsp grated ginger + ¾ tbsp grated garlic))"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "½ to 1 teaspoon Kashmiri red chili powder ((can use up to 1 tablespoon for extra heat))"
+      },
+      {
+        "amount": 2,
+        "unit": "teaspoons",
+        "name": "garam masala ((adjust to taste))"
+      },
+      {
+        "amount": 1,
+        "unit": "tablespoon",
+        "name": "coriander powder"
+      },
+      {
+        "amount": 1,
+        "unit": "to",
+        "name": "1½ teaspoon cumin powder"
+      },
+      {
+        "amount": 1,
+        "unit": "to",
+        "name": "2 teaspoons sugar ((adjust to taste))"
+      },
+      {
+        "amount": 1,
+        "unit": "lb",
+        "name": ". (450 grams) tomatoes ((pureed/chopped or 10 oz. (1¼ cup) tomato puree/ passata or 14 oz can peeled tomatoes, read notes))"
+      },
+      {
+        "amount": 1,
+        "unit": "cup",
+        "name": "hot water"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "½ tablespoon kasuri methi ((dried fenugreek leaves, I use 1 tbsp))"
+      },
+      {
+        "amount": 1,
+        "unit": "unit",
+        "name": "½ cup heavy cream/whipping cream ((or 1x - ⅓ cup whole raw cashews, 30, refer notes))"
+      },
+      {
+        "amount": 3,
+        "unit": "tablespoons",
+        "name": "heavy cream ((or any cream))"
+      },
+      {
+        "amount": 3,
+        "unit": "tablespoons",
+        "name": "coriander leaves ((fine chopped))"
+      }
+    ],
+    "notes": "Chicken tikka masala is a classic Indian/British dish with soft tender chunks of grilled chicken in a delicious &amp; super aromatic gravy. This recipe will give you the best! Serve it with Butter naan or with Basmati rice.",
+    "tags": [
+      "Chicken tikka masala",
+      "Main"
+    ],
+    "createdAt": "2026-11-14T15:14:34.411Z",
+    "lastModified": "2026-11-14T15:14:34.411Z",
+    "rating": 5,
+    "makeAgain": true
+  }
+]
