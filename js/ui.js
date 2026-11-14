@@ -83,16 +83,16 @@ class UIManager {
 
         // Modal close buttons
         document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.target.closest('.modal').style.display = 'none';
+            btn.addEventListener('click', (event) => {
+                event.currentTarget.closest('.modal').classList.remove('active');
             });
         });
 
         // Modal background close
         document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    modal.classList.remove('active');
                 }
             });
         });
