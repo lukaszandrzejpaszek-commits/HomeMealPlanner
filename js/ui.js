@@ -50,15 +50,18 @@ class UIManager {
         document.getElementById('meal-prep-friendly').addEventListener('change', (e) => {
             document.getElementById('meal-prep-days-group').style.display = e.target.checked ? 'grid' : 'none';
         });
+        document.querySelectorAll('.meal-component-form').forEach(form => {
+            form.addEventListener('submit', event => this.addMealComponent(event));
+        });
 
         // Recipes page
         if (document.getElementById('btn-add-recipe')) {
             document.getElementById('btn-add-recipe').addEventListener('click', () => this.openRecipeModal());
+            document.getElementById('btn-load-recipe-link').addEventListener('click', () => this.openRecipeLinkModal());
             document.getElementById('recipe-search').addEventListener('input', () => this.filterRecipes());
             document.getElementById('recipe-form').addEventListener('submit', (e) => this.saveRecipe(e));
             document.getElementById('btn-import-recipe-url').addEventListener('click', () => this.importRecipeFromUrl());
-            document.getElementById('btn-save-meal-components').addEventListener('click', () => this.saveMealComponents());
-            ['recipe-name', 'recipe-source-url', 'recipe-image-url', 'recipe-ingredients', 'recipe-instructions'].forEach(id => {
+            ['recipe-name', 'recipe-category', 'recipe-source-url', 'recipe-image-url', 'recipe-ingredients', 'recipe-instructions'].forEach(id => {
                 document.getElementById(id).addEventListener('input', () => this.refreshRecipePreview());
             });
         }
@@ -356,24 +359,73 @@ class UIManager {
 
     loadMealComponents() {
         const components = window.repository.getMealComponents();
-        document.getElementById('meal-component-proteins').value = components.proteins.join(', ');
-        document.getElementById('meal-component-starches').value = components.starches.join(', ');
-        document.getElementById('meal-component-vegetables').value = components.vegetables.join(', ');
+        const categories = [
+            { key: 'proteins', label: 'proteins' },
+            { key: 'starches', label: 'starches' },
+            { key: 'vegetables', label: 'vegetables' }
+        ];
+
+        categories.forEach(({ key, label }) => {
+            const list = document.getElementById(`meal-component-${key}`);
+            list.replaceChildren();
+
+            if (!components[key].length) {
+                const empty = document.createElement('li');
+                empty.className = 'meal-component-empty';
+                empty.textContent = `No ${label} added yet.`;
+                list.appendChild(empty);
+                return;
+            }
+
+            components[key].forEach((value, index) => {
+                const item = document.createElement('li');
+                const name = document.createElement('span');
+                name.textContent = value;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'btn btn-danger btn-sm';
+                remove.textContent = 'Remove';
+                remove.setAttribute('aria-label', `Remove ${value} from ${label}`);
+                remove.addEventListener('click', () => this.removeMealComponent(key, index));
+                item.append(name, remove);
+                list.appendChild(item);
+            });
+        });
+
+        const allCategoriesReady = categories.every(({ key }) => components[key].length > 0);
+        document.getElementById('meal-components-status').textContent = allCategoriesReady
+            ? 'Each generated meal will include one item from every column.'
+            : 'Add at least one item to each column to generate complete meals.';
     }
 
-    saveMealComponents() {
-        const components = window.repository.saveMealComponents({
-            proteins: document.getElementById('meal-component-proteins').value,
-            starches: document.getElementById('meal-component-starches').value,
-            vegetables: document.getElementById('meal-component-vegetables').value
-        });
-        const status = document.getElementById('meal-components-status');
-        const allCategoriesReady = components.proteins.length &&
-            components.starches.length && components.vegetables.length;
-        status.textContent = allCategoriesReady
-            ? 'Options saved. Dinner plans will combine one from each category.'
-            : 'Options saved. Add at least one item to all three categories to assemble dinners.';
-        this.displayMeals();
+    addMealComponent(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const category = form.dataset.category;
+        const input = form.querySelector('input');
+        const value = input.value.trim();
+        if (!value) return;
+
+        const components = window.repository.getMealComponents();
+        if (components[category].some(item => item.toLowerCase() === value.toLowerCase())) {
+            document.getElementById('meal-components-status').textContent = `${value} is already in this column.`;
+            input.focus();
+            return;
+        }
+
+        components[category].push(value);
+        window.repository.saveMealComponents(components);
+        input.value = '';
+        this.loadMealComponents();
+        document.getElementById('meal-components-status').textContent = `${value} added.`;
+    }
+
+    removeMealComponent(category, index) {
+        const components = window.repository.getMealComponents();
+        const [removed] = components[category].splice(index, 1);
+        window.repository.saveMealComponents(components);
+        this.loadMealComponents();
+        document.getElementById('meal-components-status').textContent = `${removed} removed.`;
     }
 
     createMealCard(meal) {
@@ -865,7 +917,7 @@ class UIManager {
 
         const meta = document.createElement('div');
         meta.className = 'meal-card-meta';
-        [ `⏱️ ${totalTime}min`, recipe.difficulty, `👥 ${recipe.servings}`, ...(recipe.tags || []) ]
+        [ recipe.category || 'Other', `⏱️ ${totalTime}min`, recipe.difficulty, `👥 ${recipe.servings}`, ...(recipe.tags || []) ]
             .forEach(label => {
                 const badge = document.createElement('span');
                 badge.className = 'badge';
@@ -927,6 +979,7 @@ class UIManager {
         if (search) {
             filtered = recipes.filter(r =>
                 r.name.toLowerCase().includes(search.toLowerCase()) ||
+                (r.category || '').toLowerCase().includes(search.toLowerCase()) ||
                 r.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))
             );
         }
@@ -953,6 +1006,11 @@ class UIManager {
         document.getElementById('recipe-import-preview').hidden = true;
         this.populateRecipeMealOptions(null);
         document.getElementById('recipe-modal').classList.add('active');
+    }
+
+    openRecipeLinkModal() {
+        this.openRecipeModal();
+        document.getElementById('recipe-import-url').focus();
     }
 
     populateRecipeMealOptions(selectedMealId) {
@@ -1007,6 +1065,7 @@ class UIManager {
             if (!recipeData) {
                 throw new Error('No supported recipe data was found on that page.');
             }
+            const suggestedCategory = this.suggestRecipeCategory(recipeData);
             if (recipeData.imageUrl) {
                 const imageUrl = new URL(recipeData.imageUrl, parsedUrl.href);
                 recipeData.imageUrl = imageUrl.protocol === 'http:' || imageUrl.protocol === 'https:'
@@ -1015,23 +1074,20 @@ class UIManager {
             }
 
             document.getElementById('recipe-source-url').value = parsedUrl.href;
-            if (recipeData.name) document.getElementById('recipe-name').value = recipeData.name;
-            if (recipeData.prepTime !== null) document.getElementById('recipe-prep-time').value = recipeData.prepTime;
-            if (recipeData.cookTime !== null) document.getElementById('recipe-cook-time').value = recipeData.cookTime;
-            if (recipeData.servings !== null) document.getElementById('recipe-servings').value = recipeData.servings;
-            if (recipeData.ingredients.length) {
-                document.getElementById('recipe-ingredients').value = recipeData.ingredients.join('\n');
-            }
-            if (recipeData.instructions.length) {
-                document.getElementById('recipe-instructions').value = recipeData.instructions.join('\n');
-            }
-            if (recipeData.description) document.getElementById('recipe-notes').value = recipeData.description;
-            if (recipeData.tags.length) document.getElementById('recipe-tags').value = recipeData.tags.join(', ');
-            if (recipeData.imageUrl) document.getElementById('recipe-image-url').value = recipeData.imageUrl;
+            document.getElementById('recipe-name').value = recipeData.name;
+            document.getElementById('recipe-category').value = suggestedCategory;
+            document.getElementById('recipe-prep-time').value = recipeData.prepTime ?? 0;
+            document.getElementById('recipe-cook-time').value = recipeData.cookTime ?? 0;
+            document.getElementById('recipe-servings').value = recipeData.servings ?? 4;
+            document.getElementById('recipe-ingredients').value = recipeData.ingredients.join('\n');
+            document.getElementById('recipe-instructions').value = recipeData.instructions.join('\n');
+            document.getElementById('recipe-notes').value = recipeData.description;
+            document.getElementById('recipe-tags').value = recipeData.tags.join(', ');
+            document.getElementById('recipe-image-url').value = recipeData.imageUrl;
 
             document.getElementById('recipe-import-preview').hidden = false;
             this.refreshRecipePreview();
-            status.textContent = 'Recipe details loaded. Review them and save the recipe.';
+            status.textContent = `Recipe details loaded. Suggested category: ${suggestedCategory}. Review and edit before saving.`;
             status.className = 'recipe-import-status success';
         } catch (error) {
             status.textContent = `${error.message} This site may block browser access (CORS). You can still save the link and enter the details manually.`;
@@ -1049,6 +1105,11 @@ class UIManager {
         const heading = document.createElement('h3');
         heading.textContent = document.getElementById('recipe-name').value || 'Recipe preview';
         preview.appendChild(heading);
+
+        const category = document.createElement('p');
+        category.className = 'recipe-preview-category';
+        category.textContent = `Category: ${document.getElementById('recipe-category').value}`;
+        preview.appendChild(category);
 
         const sourceUrl = document.getElementById('recipe-source-url').value.trim();
         if (sourceUrl) {
@@ -1190,6 +1251,30 @@ class UIManager {
         };
     }
 
+    suggestRecipeCategory(recipeData) {
+        const text = [
+            recipeData.name,
+            recipeData.description,
+            ...(recipeData.tags || []),
+            ...(recipeData.ingredients || [])
+        ].join(' ').toLowerCase();
+        const categoryTerms = (terms) => new RegExp(`\\b(?:${terms.join('|')})\\b`, 'i').test(text);
+
+        if (categoryTerms(['dessert', 'cake', 'cookie', 'pudding', 'brownie', 'pie', 'ice cream', 'tart', 'pastry', 'sweet'])) {
+            return 'Dessert';
+        }
+        if (categoryTerms(['protein', 'chicken', 'beef', 'pork', 'lamb', 'turkey', 'fish', 'salmon', 'tuna', 'shrimp', 'prawn', 'tofu', 'tempeh', 'lentils?', 'chickpeas?', 'beans?', 'eggs?'])) {
+            return 'Protein';
+        }
+        if (categoryTerms(['starch', 'rice', 'potatoes?', 'pasta', 'noodles?', 'bread', 'couscous', 'quinoa', 'oats?', 'barley', 'polenta', 'corn'])) {
+            return 'Starch';
+        }
+        if (categoryTerms(['vegetables?', 'zucchini', 'courgette', 'squash', 'broccoli', 'carrots?', 'spinach', 'kale', 'cauliflower', 'cabbage', 'peppers?', 'tomatoes?', 'onions?', 'eggplant', 'aubergine', 'mushrooms?'])) {
+            return 'Vegetables';
+        }
+        return 'Other';
+    }
+
     viewRecipe(recipeId) {
         const recipe = window.recipeManager.getRecipe(recipeId);
         if (!recipe) return;
@@ -1208,6 +1293,7 @@ class UIManager {
         this.populateRecipeMealOptions(recipe.mealId);
 
         document.getElementById('recipe-name').value = recipe.name;
+        document.getElementById('recipe-category').value = recipe.category || 'Other';
         document.getElementById('recipe-source-url').value = recipe.sourceUrl || '';
         document.getElementById('recipe-import-url').value = recipe.sourceUrl || '';
         document.getElementById('recipe-image-url').value = recipe.imageUrl || '';
@@ -1240,6 +1326,7 @@ class UIManager {
 
         const recipeData = {
             name: document.getElementById('recipe-name').value,
+            category: document.getElementById('recipe-category').value,
             sourceUrl: document.getElementById('recipe-source-url').value,
             imageUrl: document.getElementById('recipe-image-url').value,
             mealId: document.getElementById('recipe-meal-link').value || null,

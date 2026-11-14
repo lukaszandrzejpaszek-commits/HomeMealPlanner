@@ -14,6 +14,7 @@ class RecipeManager {
             id: this.generateId(),
             mealId: recipeData.mealId || null,
             name: recipeData.name,
+            category: recipeData.category || 'Other',
             sourceUrl: this.normalizeSourceUrl(recipeData.sourceUrl),
             imageUrl: this.normalizeSourceUrl(recipeData.imageUrl),
             prepTime: recipeData.prepTime || 0,
@@ -48,6 +49,7 @@ class RecipeManager {
         recipes[index] = {
             ...recipes[index],
             name: recipeData.name || recipes[index].name,
+            category: recipeData.category || recipes[index].category || 'Other',
             mealId: recipeData.mealId !== undefined ? recipeData.mealId : (recipes[index].mealId || null),
             sourceUrl: recipeData.sourceUrl !== undefined
                 ? this.normalizeSourceUrl(recipeData.sourceUrl)
@@ -140,6 +142,7 @@ class RecipeManager {
 
         let text = `RECIPE: ${recipe.name}\n`;
         text += '='.repeat(50) + '\n\n';
+        text += `Category: ${recipe.category || 'Other'}\n`;
         if (recipe.sourceUrl) {
             text += `Original recipe: ${recipe.sourceUrl}\n`;
         }

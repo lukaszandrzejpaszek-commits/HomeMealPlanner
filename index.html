@@ -81,27 +81,40 @@
                 </div>
 
                 <div class="meal-components-panel">
-                    <h3>Build dinner combinations</h3>
-                    <p>Save options in each category. The planner will assemble one protein, one starch, and one vegetable into each dinner.</p>
+                    <h3>Meal components</h3>
+                    <p>Add choices in all three columns. Each generated breakfast, lunch, and dinner will combine one protein, one starch, and one vegetable. School lunches are not generated.</p>
                     <div class="meal-components-grid">
-                        <div class="setting-group">
-                            <label for="meal-component-proteins">Proteins (comma-separated)</label>
-                            <textarea id="meal-component-proteins" rows="3" placeholder="Chicken, Salmon, Lentils"></textarea>
-                        </div>
-                        <div class="setting-group">
-                            <label for="meal-component-starches">Starches (comma-separated)</label>
-                            <textarea id="meal-component-starches" rows="3" placeholder="Rice, Potatoes, Pasta"></textarea>
-                        </div>
-                        <div class="setting-group">
-                            <label for="meal-component-vegetables">Vegetables (comma-separated)</label>
-                            <textarea id="meal-component-vegetables" rows="3" placeholder="Broccoli, Carrots, Green beans"></textarea>
-                        </div>
+                        <section class="meal-component-column" aria-labelledby="meal-proteins-heading">
+                            <h4 id="meal-proteins-heading">Proteins</h4>
+                            <form class="meal-component-form" data-category="proteins">
+                                <input type="text" aria-label="Add a protein" placeholder="e.g. Chicken" required>
+                                <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                            </form>
+                            <ul id="meal-component-proteins" class="meal-component-items"></ul>
+                        </section>
+                        <section class="meal-component-column" aria-labelledby="meal-starches-heading">
+                            <h4 id="meal-starches-heading">Starch</h4>
+                            <form class="meal-component-form" data-category="starches">
+                                <input type="text" aria-label="Add a starch" placeholder="e.g. Rice" required>
+                                <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                            </form>
+                            <ul id="meal-component-starches" class="meal-component-items"></ul>
+                        </section>
+                        <section class="meal-component-column" aria-labelledby="meal-vegetables-heading">
+                            <h4 id="meal-vegetables-heading">Vegetables</h4>
+                            <form class="meal-component-form" data-category="vegetables">
+                                <input type="text" aria-label="Add a vegetable" placeholder="e.g. Broccoli" required>
+                                <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                            </form>
+                            <ul id="meal-component-vegetables" class="meal-component-items"></ul>
+                        </section>
                     </div>
                     <div class="meal-components-actions">
-                        <button id="btn-save-meal-components" class="btn btn-secondary">Save component options</button>
                         <span id="meal-components-status" role="status" aria-live="polite"></span>
                     </div>
                 </div>
+
+                <h3 class="meal-list-heading">Saved complete meals</h3>
 
                 <!-- Search and Filter -->
                 <div class="search-filter">
@@ -134,7 +147,10 @@
             <section id="recipes-page" class="page">
                 <div class="page-header">
                     <h2>Recipes 📖</h2>
-                    <button id="btn-add-recipe" class="btn btn-primary">+ Add Recipe</button>
+                    <div class="header-actions">
+                        <button id="btn-add-recipe" class="btn btn-primary">+ Add Manually</button>
+                        <button id="btn-load-recipe-link" class="btn btn-secondary">Load from Link</button>
+                    </div>
                 </div>
 
                 <!-- Search -->
@@ -324,7 +340,7 @@
                         <input type="url" id="recipe-import-url" placeholder="https://example.com/recipe">
                         <button type="button" id="btn-import-recipe-url" class="btn btn-secondary">Load Recipe</button>
                     </div>
-                    <small class="recipe-import-help">Works on sites that allow browser access. If loading is blocked, add the source link and copy the recipe details below.</small>
+                    <small class="recipe-import-help">Optional. Import works on sites that allow browser access and publish recipe data. You can always enter the recipe manually below.</small>
                     <div id="recipe-import-status" class="recipe-import-status" role="status" aria-live="polite"></div>
                 </div>
 
@@ -350,6 +366,18 @@
                 <div class="form-group">
                     <label for="recipe-name">Recipe Name:</label>
                     <input type="text" id="recipe-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-category">Recipe Category:</label>
+                    <select id="recipe-category">
+                        <option value="Other">Other / unsure</option>
+                        <option value="Dessert">Dessert</option>
+                        <option value="Protein">Protein</option>
+                        <option value="Starch">Starch</option>
+                        <option value="Vegetables">Vegetables</option>
+                    </select>
+                    <small class="recipe-import-help">Link imports suggest a category. Change it here or later with Edit.</small>
                 </div>
 
                 <div class="form-group">

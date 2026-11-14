@@ -105,10 +105,6 @@ class Repository {
     }
 
     getPlanningMealsByType(type) {
-        if (type !== 'Dinner') {
-            return this.getMealsByType(type);
-        }
-
         const { proteins, starches, vegetables } = this.getMealComponents();
         if (!proteins.length || !starches.length || !vegetables.length) {
             return this.getMealsByType(type);
@@ -121,7 +117,7 @@ class Repository {
                     combinations.push({
                         id: `components:${JSON.stringify([protein, starch, vegetable])}`,
                         name: `${protein} with ${starch} and ${vegetable}`,
-                        mealType: 'Dinner',
+                        mealType: type,
                         cuisine: 'Home',
                         protein,
                         foodGroups: [protein, starch, vegetable],

@@ -54,7 +54,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **Regenerate day**: Generate plan > Regenerate individual meals
 - **School lunch**: Choose school lunch separately on each day in the planner
 - **Future week**: Select a later week to generate and save a separate plan
-- **Dinner components**: On Meals, save protein, starch, and vegetable options for the planner to combine
+- **Meal components**: On Meals, add proteins, starches, and vegetables in separate columns. Generated breakfasts, lunches, and dinners combine one item from each; school lunches are skipped. Saved complete meals are used when a component category is empty.
 - **Adjust rules**: Go to Rules page and toggle rules on/off or change strength
 
 ### Shopping

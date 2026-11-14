@@ -30,7 +30,7 @@ A lightweight, single-page web application for family meal planning with intelli
 - **School Lunch Support** - Choose school lunch separately for each day in the weekly planner
 - **Settings** - Customize meal planning parameters
 - **Export/Import** - Export meals and recipes as JSON
-- **Dinner Components** - Generate dinners from reusable protein, starch, and vegetable options
+- **Meal Components** - Manage proteins, starches, and vegetables in separate columns; generated breakfasts, lunches, and dinners combine one item from each (school lunches are skipped). Saved complete meals are used when a component category is empty.
 
 ## Technology Stack
 

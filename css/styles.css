@@ -535,17 +535,56 @@ body {
 
 .meal-components-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--spacing-md);
 }
 
-.meal-components-grid textarea {
+.meal-component-column {
+    min-width: 0;
     padding: var(--spacing-md);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     background-color: var(--bg-primary);
+}
+
+.meal-component-column h4 {
+    margin-bottom: var(--spacing-md);
+}
+
+.meal-component-form {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.meal-component-form input {
+    min-width: 0;
+    flex: 1;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--bg-secondary);
     color: var(--text-primary);
     font: inherit;
+}
+
+.meal-component-items {
+    display: grid;
+    gap: var(--spacing-sm);
+    margin: var(--spacing-md) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.meal-component-items li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    overflow-wrap: anywhere;
+}
+
+.meal-component-empty {
+    color: var(--text-secondary);
 }
 
 .meal-components-actions {
@@ -559,6 +598,10 @@ body {
 .meal-components-actions span {
     color: var(--text-secondary);
     font-size: 0.9rem;
+}
+
+.meal-list-heading {
+    margin-bottom: var(--spacing-md);
 }
 
 .linked-recipes {
@@ -1083,6 +1126,10 @@ body {
     .meals-grid {
         grid-template-columns: 1fr;
     }
+
+    .meal-components-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 480px) {
@@ -1095,6 +1142,10 @@ body {
     }
 
     .dashboard-widgets {
+        grid-template-columns: 1fr;
+    }
+
+    .meal-components-grid {
         grid-template-columns: 1fr;
     }
 
