@@ -64,6 +64,12 @@ class Repository {
         const meals = this.storage.get('meals', []);
         const filtered = meals.filter(m => m.id !== id);
         this.storage.set('meals', filtered);
+
+        const recipes = this.storage.get('recipes', []);
+        const linkedRecipes = recipes.map(recipe =>
+            recipe.mealId === id ? { ...recipe, mealId: null } : recipe
+        );
+        this.storage.set('recipes', linkedRecipes);
     }
 
     getMeal(id) {
@@ -78,6 +84,58 @@ class Repository {
     getMealsByType(type) {
         const meals = this.storage.get('meals', []);
         return meals.filter(m => m.mealType === type);
+    }
+
+    getMealComponents() {
+        return this.storage.get('meal-components', {
+            proteins: [],
+            starches: [],
+            vegetables: []
+        });
+    }
+
+    saveMealComponents(components) {
+        const normalized = {
+            proteins: this.parseList(components.proteins),
+            starches: this.parseList(components.starches),
+            vegetables: this.parseList(components.vegetables)
+        };
+        this.storage.set('meal-components', normalized);
+        return normalized;
+    }
+
+    getPlanningMealsByType(type) {
+        if (type !== 'Dinner') {
+            return this.getMealsByType(type);
+        }
+
+        const { proteins, starches, vegetables } = this.getMealComponents();
+        if (!proteins.length || !starches.length || !vegetables.length) {
+            return this.getMealsByType(type);
+        }
+
+        const combinations = [];
+        proteins.forEach(protein => {
+            starches.forEach(starch => {
+                vegetables.forEach(vegetable => {
+                    combinations.push({
+                        id: `components:${JSON.stringify([protein, starch, vegetable])}`,
+                        name: `${protein} with ${starch} and ${vegetable}`,
+                        mealType: 'Dinner',
+                        cuisine: 'Home',
+                        protein,
+                        foodGroups: [protein, starch, vegetable],
+                        mealPrepFriendly: false,
+                        mealPrepDays: 0,
+                        difficulty: 'Easy',
+                        ingredients: [protein, starch, vegetable],
+                        tags: [],
+                        components: { protein, starch, vegetable }
+                    });
+                });
+            });
+        });
+        return combinations;
     }
 
     searchMeals(query) {

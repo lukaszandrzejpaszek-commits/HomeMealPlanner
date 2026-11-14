@@ -13,7 +13,6 @@ class SettingsManager {
         return {
             cookForDays: 2,
             historyWeeksToAvoid: 4,
-            defaultSchoolLunchDays: ['Monday', 'Wednesday', 'Friday'],
             darkMode: false
         };
     }

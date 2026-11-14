@@ -6,6 +6,7 @@ A lightweight, single-page web application for family meal planning with intelli
 
 ### Core Features
 - **Weekly Meal Planning** - Automatically generate optimal meal plans for breakfast, lunch, and dinner
+- **Future Week Planning** - Select, generate, and revisit separate plans with week numbers and date ranges
 - **Meal Repository** - Store and organize meals with detailed metadata
 - **Smart Rule Engine** - 8 customizable planning rules to optimize meal selection:
   - Avoid identical meals on consecutive days
@@ -23,12 +24,13 @@ A lightweight, single-page web application for family meal planning with intelli
 - **Data Backup/Restore** - Download and restore all data as JSON
 
 ### Bonus Features
-- **Recipe Storage 📖** - Store detailed recipes with ingredients, instructions, and ratings
+- **Recipe Storage 📖** - Store detailed recipes with ingredients, instructions, ratings, images, and source links
 - **Partial Regeneration** - Regenerate just breakfast, lunch, dinner, or a specific day
 - **Custom Rules** - Create your own meal planning rules
-- **School Lunch Support** - Mark days when children have school lunch
+- **School Lunch Support** - Choose school lunch separately for each day in the weekly planner
 - **Settings** - Customize meal planning parameters
 - **Export/Import** - Export meals and recipes as JSON
+- **Dinner Components** - Generate dinners from reusable protein, starch, and vegetable options
 
 ## Technology Stack
 
@@ -93,11 +95,14 @@ HomeMealPlanner/
    - Food groups
    - Tags
 
-### Adding Recipes (Bonus)
+### Adding Recipes
 
 1. Go to **Recipes** page
 2. Click **+ Add Recipe**
-3. Fill in recipe details:
+3. Enter a recipe webpage URL and click **Load Recipe** to import Schema.org recipe details, including the image when provided. Review the preview before saving. Import requires the site to permit browser access (CORS).
+4. Choose a meal from **Connect to a meal** to associate the recipe with it.
+5. If the site blocks browser access (CORS) or has no supported structured recipe data, enter the URL as the original recipe link and fill in the details manually.
+6. Fill or review recipe details:
    - Name
    - Difficulty
    - Prep and cook time
@@ -107,11 +112,16 @@ HomeMealPlanner/
    - Notes
    - Tags
 
+### Dinner Component Options
+
+On the **Meals** page, save lists of proteins, starches, and vegetables. Once all three lists have at least one option, generated dinners combine one item from each list. If any list is empty, the planner continues using saved dinner meals instead.
+
 ### Generating a Week Plan
 
 1. Go to **Planner** page
-2. Click **Generate Week**
-3. The algorithm will create an optimal plan based on:
+2. Select a target week; the week number and date range appear beside the selector
+3. Click **🎲 Generate Week**
+4. The algorithm will create an optimal plan based on:
    - Your meals
    - Active rules and their strength
    - Recent meal history
@@ -135,7 +145,7 @@ HomeMealPlanner/
 
 - **Regenerate** individual meal types or days
 - **Replace** specific meals by clicking on them
-- **Mark school lunch days** (no lunch planning)
+- **Choose school lunch per day** with the checkbox in each day's planner card
 - **Approve** plan to save to history
 - **Copy** previous plans from history
 
@@ -151,7 +161,6 @@ HomeMealPlanner/
 Configure:
 - Days to cook meals for
 - Weeks of history to avoid repeating
-- School lunch days
 - Dark mode preference
 
 ### Backup & Restore

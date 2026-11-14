@@ -14,6 +14,8 @@ class RecipeManager {
             id: this.generateId(),
             mealId: recipeData.mealId || null,
             name: recipeData.name,
+            sourceUrl: this.normalizeSourceUrl(recipeData.sourceUrl),
+            imageUrl: this.normalizeSourceUrl(recipeData.imageUrl),
             prepTime: recipeData.prepTime || 0,
             cookTime: recipeData.cookTime || 0,
             servings: recipeData.servings || 4,
@@ -46,6 +48,13 @@ class RecipeManager {
         recipes[index] = {
             ...recipes[index],
             name: recipeData.name || recipes[index].name,
+            mealId: recipeData.mealId !== undefined ? recipeData.mealId : (recipes[index].mealId || null),
+            sourceUrl: recipeData.sourceUrl !== undefined
+                ? this.normalizeSourceUrl(recipeData.sourceUrl)
+                : (recipes[index].sourceUrl || ''),
+            imageUrl: recipeData.imageUrl !== undefined
+                ? this.normalizeSourceUrl(recipeData.imageUrl)
+                : (recipes[index].imageUrl || ''),
             prepTime: recipeData.prepTime !== undefined ? recipeData.prepTime : recipes[index].prepTime,
             cookTime: recipeData.cookTime !== undefined ? recipeData.cookTime : recipes[index].cookTime,
             servings: recipeData.servings || recipes[index].servings,
@@ -131,6 +140,9 @@ class RecipeManager {
 
         let text = `RECIPE: ${recipe.name}\n`;
         text += '='.repeat(50) + '\n\n';
+        if (recipe.sourceUrl) {
+            text += `Original recipe: ${recipe.sourceUrl}\n`;
+        }
         text += `Difficulty: ${recipe.difficulty}\n`;
         text += `Prep Time: ${recipe.prepTime} min | Cook Time: ${recipe.cookTime} min\n`;
         text += `Servings: ${recipe.servings}\n`;
@@ -222,6 +234,24 @@ class RecipeManager {
             return input.split(',').map(i => i.trim()).filter(i => i);
         }
         return [];
+    }
+
+    normalizeSourceUrl(value) {
+        const sourceUrl = (value || '').trim();
+        if (!sourceUrl) return '';
+
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(sourceUrl);
+        } catch (error) {
+            throw new Error('Enter a valid http:// or https:// link.');
+        }
+
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+            throw new Error('Recipe links must start with http:// or https://.');
+        }
+
+        return parsedUrl.href;
     }
 
     calculateTotalTime(recipe) {

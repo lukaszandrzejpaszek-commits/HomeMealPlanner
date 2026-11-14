@@ -34,8 +34,10 @@
                 <div class="page-header">
                     <h2>Weekly Meal Planner</h2>
                     <div class="header-actions">
+                        <label class="week-select-label" for="week-selector">Plan week</label>
+                        <input id="week-selector" class="week-selector" type="week" aria-label="Select plan week">
                         <span id="week-display" class="week-display"></span>
-                        <button id="btn-generate-week" class="btn btn-primary">Generate Week</button>
+                        <button id="btn-generate-week" class="btn btn-primary"><span aria-hidden="true">🎲</span> Generate Week</button>
                         <button id="btn-approve-plan" class="btn btn-success">Approve Plan</button>
                     </div>
                 </div>
@@ -76,6 +78,29 @@
                 <div class="page-header">
                     <h2>Meal Repository</h2>
                     <button id="btn-add-meal" class="btn btn-primary">+ Add Meal</button>
+                </div>
+
+                <div class="meal-components-panel">
+                    <h3>Build dinner combinations</h3>
+                    <p>Save options in each category. The planner will assemble one protein, one starch, and one vegetable into each dinner.</p>
+                    <div class="meal-components-grid">
+                        <div class="setting-group">
+                            <label for="meal-component-proteins">Proteins (comma-separated)</label>
+                            <textarea id="meal-component-proteins" rows="3" placeholder="Chicken, Salmon, Lentils"></textarea>
+                        </div>
+                        <div class="setting-group">
+                            <label for="meal-component-starches">Starches (comma-separated)</label>
+                            <textarea id="meal-component-starches" rows="3" placeholder="Rice, Potatoes, Pasta"></textarea>
+                        </div>
+                        <div class="setting-group">
+                            <label for="meal-component-vegetables">Vegetables (comma-separated)</label>
+                            <textarea id="meal-component-vegetables" rows="3" placeholder="Broccoli, Carrots, Green beans"></textarea>
+                        </div>
+                    </div>
+                    <div class="meal-components-actions">
+                        <button id="btn-save-meal-components" class="btn btn-secondary">Save component options</button>
+                        <span id="meal-components-status" role="status" aria-live="polite"></span>
+                    </div>
                 </div>
 
                 <!-- Search and Filter -->
@@ -180,19 +205,6 @@
                     <div class="setting-group">
                         <label for="history-weeks">Weeks to Avoid in History:</label>
                         <input type="number" id="history-weeks" min="1" max="52" value="4">
-                    </div>
-
-                    <div class="setting-group">
-                        <label>School Lunch Days:</label>
-                        <div class="checkbox-group">
-                            <label><input type="checkbox" class="school-lunch-day" value="Monday"> Monday</label>
-                            <label><input type="checkbox" class="school-lunch-day" value="Tuesday"> Tuesday</label>
-                            <label><input type="checkbox" class="school-lunch-day" value="Wednesday"> Wednesday</label>
-                            <label><input type="checkbox" class="school-lunch-day" value="Thursday"> Thursday</label>
-                            <label><input type="checkbox" class="school-lunch-day" value="Friday"> Friday</label>
-                            <label><input type="checkbox" class="school-lunch-day" value="Saturday"> Saturday</label>
-                            <label><input type="checkbox" class="school-lunch-day" value="Sunday"> Sunday</label>
-                        </div>
                     </div>
 
                     <div class="setting-group">
@@ -306,6 +318,35 @@
             <span class="close-modal">&times;</span>
             <h2 id="recipe-modal-title">Add Recipe</h2>
             <form id="recipe-form">
+                <div class="form-group">
+                    <label for="recipe-import-url">Load recipe from a webpage:</label>
+                    <div class="recipe-import-controls">
+                        <input type="url" id="recipe-import-url" placeholder="https://example.com/recipe">
+                        <button type="button" id="btn-import-recipe-url" class="btn btn-secondary">Load Recipe</button>
+                    </div>
+                    <small class="recipe-import-help">Works on sites that allow browser access. If loading is blocked, add the source link and copy the recipe details below.</small>
+                    <div id="recipe-import-status" class="recipe-import-status" role="status" aria-live="polite"></div>
+                </div>
+
+                <div id="recipe-import-preview" class="recipe-import-preview" hidden></div>
+
+                <div class="form-group">
+                    <label for="recipe-source-url">Original recipe link:</label>
+                    <input type="url" id="recipe-source-url" placeholder="https://example.com/recipe">
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-image-url">Recipe image URL:</label>
+                    <input type="url" id="recipe-image-url" placeholder="https://example.com/recipe-photo.jpg">
+                </div>
+
+                <div class="form-group">
+                    <label for="recipe-meal-link">Connect to a meal:</label>
+                    <select id="recipe-meal-link">
+                        <option value="">Not linked to a meal</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label for="recipe-name">Recipe Name:</label>
                     <input type="text" id="recipe-name" required>

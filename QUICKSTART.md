@@ -27,8 +27,9 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 
 ### Step 2: Generate Your First Week Plan
 1. Click **Planner** in the navigation
-2. Click **Generate Week** button
-3. Watch the algorithm create an optimal plan!
+2. Select the week to plan; its week number and date range are shown
+3. Click **🎲 Generate Week**
+4. Watch the algorithm create an optimal plan!
 
 ### Step 3: Approve the Plan
 1. Review the generated meals
@@ -51,7 +52,9 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 ### Planning
 - **Replace a meal**: Click on any meal in the week view to pick a different one
 - **Regenerate day**: Generate plan > Regenerate individual meals
-- **School lunch**: Disable lunch planning for selected days (Settings)
+- **School lunch**: Choose school lunch separately on each day in the planner
+- **Future week**: Select a later week to generate and save a separate plan
+- **Dinner components**: On Meals, save protein, starch, and vegetable options for the planner to combine
 - **Adjust rules**: Go to Rules page and toggle rules on/off or change strength
 
 ### Shopping
@@ -61,6 +64,8 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 
 ### Recipes (Bonus!)
 - **Add recipe**: Go to Recipes > + Add Recipe
+- **Import from a link**: Load recipe details and review ingredients, steps, and image before saving; the site must allow browser access (CORS)
+- **Connect to a meal**: Choose the saved meal in the recipe form
 - **Fill in**: Name, time, servings, ingredients, instructions
 - **Rate**: Use stars to rate your favorite recipes
 - **View**: Click "View" to see full recipe

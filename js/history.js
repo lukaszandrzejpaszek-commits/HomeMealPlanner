@@ -55,7 +55,9 @@ class HistoryManager {
             return false;
         }
 
+        const selectedWeek = this.storage.get('current-week', {});
         const currentWeek = {
+            ...selectedWeek,
             plan: JSON.parse(JSON.stringify(historyWeek.plan)),
             status: 'Draft',
             createdAt: new Date().toISOString(),
@@ -63,6 +65,11 @@ class HistoryManager {
         };
 
         this.storage.set('current-week', currentWeek);
+        if (currentWeek.weekKey) {
+            const weeklyPlans = this.storage.get('weekly-plans', {});
+            weeklyPlans[currentWeek.weekKey] = currentWeek;
+            this.storage.set('weekly-plans', weeklyPlans);
+        }
         return true;
     }
 

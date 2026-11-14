@@ -4,6 +4,7 @@ class RuleEngine {
     constructor(storage, repository) {
         this.storage = storage;
         this.repository = repository;
+        this.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     }
 
     getRules() {
@@ -91,7 +92,8 @@ class RuleEngine {
     ruleAvoidConsecutive(meal, plan, dayIndex, mealTimeType) {
         if (dayIndex === 0) return 100;
 
-        const prevDay = plan[dayIndex - 1];
+        const prevDay = this.getDayPlan(plan, dayIndex - 1);
+        if (!prevDay) return 100;
         const prevMeal = prevDay[mealTimeType];
 
         if (!prevMeal || !prevMeal.id) return 100;
@@ -110,7 +112,8 @@ class RuleEngine {
     ruleAvoidSameFoodGroup(meal, plan, dayIndex, mealTimeType) {
         if (mealTimeType === 'breakfast') return 100;
 
-        const sameDay = plan[dayIndex];
+        const sameDay = this.getDayPlan(plan, dayIndex);
+        if (!sameDay) return 100;
         const otherMealType = mealTimeType === 'lunch' ? 'dinner' : 'lunch';
         const otherMeal = sameDay[otherMealType];
 
@@ -133,7 +136,8 @@ class RuleEngine {
         let cuisineCount = {};
 
         for (let i = startDay; i < dayIndex; i++) {
-            const day = plan[i];
+            const day = this.getDayPlan(plan, i);
+            if (!day) continue;
             ['breakfast', 'lunch', 'dinner'].forEach(type => {
                 if (day[type] && day[type].id) {
                     cuisineCount[day[type].cuisine] = (cuisineCount[day[type].cuisine] || 0) + 1;
@@ -155,7 +159,8 @@ class RuleEngine {
         let proteinCount = {};
 
         for (let i = startDay; i < dayIndex; i++) {
-            const day = plan[i];
+            const day = this.getDayPlan(plan, i);
+            if (!day) continue;
             ['breakfast', 'lunch', 'dinner'].forEach(type => {
                 if (day[type] && day[type].id) {
                     const protein = day[type].protein || 'Unknown';
@@ -212,7 +217,8 @@ class RuleEngine {
         let usedIngredients = new Set();
 
         for (let i = startDay; i < dayIndex; i++) {
-            const day = plan[i];
+            const day = this.getDayPlan(plan, i);
+            if (!day) continue;
             ['breakfast', 'lunch', 'dinner'].forEach(type => {
                 if (day[type] && day[type].id) {
                     day[type].ingredients.forEach(ing => usedIngredients.add(ing));
@@ -242,7 +248,8 @@ class RuleEngine {
             return 100;
         }
 
-        const prevDay = plan[dayIndex - 1];
+        const prevDay = this.getDayPlan(plan, dayIndex - 1);
+        if (!prevDay) return 100;
         const prevMeal = prevDay[mealTimeType];
 
         if (prevMeal && prevMeal.id && prevMeal.difficulty === 'Hard') {
@@ -253,6 +260,10 @@ class RuleEngine {
     }
 
     // Helper to get week number
+    getDayPlan(plan, dayIndex) {
+        return plan[this.days[dayIndex]];
+    }
+
     getWeekNumber(date) {
         const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
         d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));

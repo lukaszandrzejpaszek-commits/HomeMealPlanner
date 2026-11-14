@@ -26,6 +26,15 @@ class UIManager {
         });
 
         // Planner page
+        document.getElementById('week-selector').addEventListener('change', (e) => {
+            try {
+                window.planner.setTargetWeek(e.target.value);
+                this.displayCurrentWeek();
+            } catch (error) {
+                alert(error.message);
+                e.target.value = window.planner.getWeekInputValue();
+            }
+        });
         document.getElementById('btn-generate-week').addEventListener('click', () => this.generateWeek());
         document.getElementById('btn-approve-plan').addEventListener('click', () => this.approvePlan());
         document.getElementById('btn-regenerate-breakfast').addEventListener('click', () => this.regenerateMealType('breakfast'));
@@ -47,6 +56,11 @@ class UIManager {
             document.getElementById('btn-add-recipe').addEventListener('click', () => this.openRecipeModal());
             document.getElementById('recipe-search').addEventListener('input', () => this.filterRecipes());
             document.getElementById('recipe-form').addEventListener('submit', (e) => this.saveRecipe(e));
+            document.getElementById('btn-import-recipe-url').addEventListener('click', () => this.importRecipeFromUrl());
+            document.getElementById('btn-save-meal-components').addEventListener('click', () => this.saveMealComponents());
+            ['recipe-name', 'recipe-source-url', 'recipe-image-url', 'recipe-ingredients', 'recipe-instructions'].forEach(id => {
+                document.getElementById(id).addEventListener('input', () => this.refreshRecipePreview());
+            });
         }
 
         // Rules page
@@ -84,6 +98,7 @@ class UIManager {
     loadInitialState() {
         this.displayCurrentWeek();
         this.displayMeals();
+        this.loadMealComponents();
         this.displayRecipes();
         this.displayRules();
         this.displayHistory();
@@ -145,8 +160,16 @@ class UIManager {
         const plan = currentWeek ? currentWeek.plan : window.planner.createEmptyPlan();
         const info = window.planner.getCurrentWeekInfo();
 
-        // Update week display
-        document.getElementById('week-display').textContent = `Week ${info.weekNum}, ${info.year}`;
+        const startDate = new Date(`${info.weekStartDate}T00:00:00Z`);
+        const endDate = new Date(`${info.weekEndDate}T00:00:00Z`);
+        const dateFormat = new Intl.DateTimeFormat(undefined, {
+            month: 'short',
+            day: 'numeric',
+            timeZone: 'UTC'
+        });
+        document.getElementById('week-selector').value = window.planner.getWeekInputValue();
+        document.getElementById('week-display').textContent =
+            `Week ${info.weekNumber}, ${info.year} · ${dateFormat.format(startDate)}–${dateFormat.format(endDate)}`;
 
         // Update status
         const statusBadge = document.getElementById('status-badge');
@@ -188,6 +211,19 @@ class UIManager {
             const label = document.createElement('div');
             label.className = 'meal-slot-label';
             label.textContent = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+            if (mealType === 'lunch') {
+                const schoolLunchLabel = document.createElement('label');
+                schoolLunchLabel.className = 'school-lunch-toggle';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = Boolean(dayPlan.schoolLunch);
+                checkbox.addEventListener('change', () => {
+                    window.planner.setSchoolLunch(dayIndex, checkbox.checked);
+                    this.displayCurrentWeek();
+                });
+                schoolLunchLabel.append(checkbox, document.createTextNode('School lunch'));
+                label.appendChild(schoolLunchLabel);
+            }
             slot.appendChild(label);
 
             let mealItem = document.createElement('div');
@@ -196,11 +232,6 @@ class UIManager {
             if (mealType === 'lunch' && dayPlan.schoolLunch) {
                 mealItem.className += ' school-lunch';
                 mealItem.textContent = 'School Lunch';
-                mealItem.style.cursor = 'pointer';
-                mealItem.addEventListener('click', () => {
-                    dayPlan.schoolLunch = false;
-                    this.displayCurrentWeek();
-                });
             } else if (!dayPlan[mealType]) {
                 mealItem.className += ' empty';
                 mealItem.textContent = '+ Add Meal';
@@ -253,7 +284,12 @@ class UIManager {
     generateWeek() {
         const plan = window.planner.generateWeekPlan();
         this.displayCurrentWeek();
-        alert('Week plan generated successfully!');
+        const hasPlannedMeals = Object.values(plan).some(day =>
+            ['breakfast', 'lunch', 'dinner'].some(mealType => day[mealType])
+        );
+        alert(hasPlannedMeals
+            ? 'Week plan generated successfully!'
+            : 'No meals are available for this week. Add meals or complete all three dinner component lists first.');
     }
 
     regenerateMealType(mealType) {
@@ -274,7 +310,7 @@ class UIManager {
 
     openMealPicker(dayIndex, mealType) {
         this.currentMealPickerContext = { dayIndex, mealType };
-        const meals = window.repository.getMealsByType(mealType.charAt(0).toUpperCase() + mealType.slice(1));
+        const meals = window.repository.getPlanningMealsByType(mealType.charAt(0).toUpperCase() + mealType.slice(1));
 
         const list = document.getElementById('meal-picker-list');
         list.innerHTML = '';
@@ -318,6 +354,28 @@ class UIManager {
         });
     }
 
+    loadMealComponents() {
+        const components = window.repository.getMealComponents();
+        document.getElementById('meal-component-proteins').value = components.proteins.join(', ');
+        document.getElementById('meal-component-starches').value = components.starches.join(', ');
+        document.getElementById('meal-component-vegetables').value = components.vegetables.join(', ');
+    }
+
+    saveMealComponents() {
+        const components = window.repository.saveMealComponents({
+            proteins: document.getElementById('meal-component-proteins').value,
+            starches: document.getElementById('meal-component-starches').value,
+            vegetables: document.getElementById('meal-component-vegetables').value
+        });
+        const status = document.getElementById('meal-components-status');
+        const allCategoriesReady = components.proteins.length &&
+            components.starches.length && components.vegetables.length;
+        status.textContent = allCategoriesReady
+            ? 'Options saved. Dinner plans will combine one from each category.'
+            : 'Options saved. Add at least one item to all three categories to assemble dinners.';
+        this.displayMeals();
+    }
+
     createMealCard(meal) {
         const card = document.createElement('div');
         card.className = 'meal-card';
@@ -343,6 +401,14 @@ class UIManager {
                 <button class="btn btn-danger btn-sm" onclick="window.ui.deleteMeal('${meal.id}')">Delete</button>
             </div>
         `;
+
+        const linkedRecipes = window.recipeManager.getRecipesByMeal(meal.id);
+        if (linkedRecipes.length) {
+            const recipeNames = document.createElement('div');
+            recipeNames.className = 'meal-info linked-recipes';
+            recipeNames.textContent = `Recipes: ${linkedRecipes.map(recipe => recipe.name).join(', ')}`;
+            card.querySelector('.meal-card-actions').before(recipeNames);
+        }
 
         return card;
     }
@@ -563,6 +629,9 @@ class UIManager {
 
         const date = new Date(item.approvedDate);
         const dateStr = date.toLocaleDateString();
+        const weekDates = item.weekStartDate && item.weekEndDate
+            ? `${item.weekStartDate} – ${item.weekEndDate}`
+            : '';
 
         let previewHtml = '';
         if (item.plan) {
@@ -592,11 +661,11 @@ class UIManager {
         element.innerHTML = `
             <div class="history-header">
                 <div>
-                    <div class="history-week-info">Week ${item.weekNumber}, ${item.year}</div>
+                    <div class="history-week-info">Week ${item.weekNumber}, ${item.year}${weekDates ? ` · ${weekDates}` : ''}</div>
                     <div class="history-date">Approved: ${dateStr}</div>
                 </div>
                 <div class="history-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="window.ui.copyHistoryToCurrent(${item.weekNumber}, ${item.year})">Copy to This Week</button>
+                    <button class="btn btn-secondary btn-sm" onclick="window.ui.copyHistoryToCurrent(${item.weekNumber}, ${item.year})">Copy to Selected Week</button>
                 </div>
             </div>
             <div class="history-preview">
@@ -608,10 +677,10 @@ class UIManager {
     }
 
     copyHistoryToCurrent(weekNumber, year) {
-        if (confirm('Copy this plan to this week? This will overwrite the current plan.')) {
+        if (confirm('Copy this plan to the selected week? This will overwrite its current plan.')) {
             window.historyManager.copyHistoryToCurrent(weekNumber, year);
             this.switchPage('planner');
-            alert('Plan copied!');
+            alert('Plan copied to the selected week!');
         }
     }
 
@@ -676,21 +745,12 @@ class UIManager {
 
         document.getElementById('cook-for-days').value = settings.cookForDays;
         document.getElementById('history-weeks').value = settings.historyWeeksToAvoid;
-
-        const schoolLunchCheckboxes = document.querySelectorAll('.school-lunch-day');
-        schoolLunchCheckboxes.forEach(cb => {
-            cb.checked = settings.defaultSchoolLunchDays.includes(cb.value);
-        });
     }
 
     saveSettings() {
-        const schoolLunchDays = Array.from(document.querySelectorAll('.school-lunch-day:checked'))
-            .map(cb => cb.value);
-
         window.settingsManager.updateSettings({
             cookForDays: parseInt(document.getElementById('cook-for-days').value),
-            historyWeeksToAvoid: parseInt(document.getElementById('history-weeks').value),
-            defaultSchoolLunchDays: schoolLunchDays
+            historyWeeksToAvoid: parseInt(document.getElementById('history-weeks').value)
         });
 
         alert('Settings saved!');
@@ -771,30 +831,90 @@ class UIManager {
     createRecipeCard(recipe) {
         const card = document.createElement('div');
         card.className = 'meal-card';
-
-        const tagsHtml = recipe.tags.map(tag => `<span class="badge">${tag}</span>`).join('');
         const totalTime = recipe.prepTime + recipe.cookTime;
         const ratingStars = '★'.repeat(recipe.rating) + '☆'.repeat(5 - recipe.rating);
 
-        card.innerHTML = `
-            <div class="meal-card-header">
-                <div>
-                    <div class="meal-card-title">${recipe.name}</div>
-                    <div class="meal-info">${ratingStars}</div>
-                </div>
-            </div>
-            <div class="meal-card-meta">
-                <span class="badge">⏱️ ${totalTime}min</span>
-                <span class="badge">${recipe.difficulty}</span>
-                <span class="badge">👥 ${recipe.servings}</span>
-                ${tagsHtml}
-            </div>
-            <div class="meal-card-actions">
-                <button class="btn btn-secondary btn-sm" onclick="window.ui.viewRecipe('${recipe.id}')">View</button>
-                <button class="btn btn-secondary btn-sm" onclick="window.ui.editRecipe('${recipe.id}')">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="window.ui.deleteRecipe('${recipe.id}')">Delete</button>
-            </div>
-        `;
+        if (recipe.imageUrl) {
+            try {
+                const imageUrl = new URL(recipe.imageUrl);
+                if (imageUrl.protocol === 'http:' || imageUrl.protocol === 'https:') {
+                    const image = document.createElement('img');
+                    image.className = 'recipe-card-image';
+                    image.src = imageUrl.href;
+                    image.alt = recipe.name;
+                    image.loading = 'lazy';
+                    image.referrerPolicy = 'no-referrer';
+                    card.appendChild(image);
+                }
+            } catch (error) {
+                // Ignore invalid image URLs in older imported data.
+            }
+        }
+
+        const header = document.createElement('div');
+        header.className = 'meal-card-header';
+        const titleGroup = document.createElement('div');
+        const title = document.createElement('div');
+        title.className = 'meal-card-title';
+        title.textContent = recipe.name;
+        const rating = document.createElement('div');
+        rating.className = 'meal-info';
+        rating.textContent = ratingStars;
+        titleGroup.append(title, rating);
+        header.appendChild(titleGroup);
+
+        const meta = document.createElement('div');
+        meta.className = 'meal-card-meta';
+        [ `⏱️ ${totalTime}min`, recipe.difficulty, `👥 ${recipe.servings}`, ...(recipe.tags || []) ]
+            .forEach(label => {
+                const badge = document.createElement('span');
+                badge.className = 'badge';
+                badge.textContent = label;
+                meta.appendChild(badge);
+            });
+
+        card.append(header, meta);
+
+        const linkedMeal = recipe.mealId ? window.repository.getMeal(recipe.mealId) : null;
+        if (linkedMeal) {
+            const mealLabel = document.createElement('div');
+            mealLabel.className = 'meal-info';
+            mealLabel.textContent = `Linked meal: ${linkedMeal.name}`;
+            card.appendChild(mealLabel);
+        }
+
+        if (recipe.sourceUrl) {
+            try {
+                const sourceUrl = new URL(recipe.sourceUrl);
+                if (sourceUrl.protocol === 'http:' || sourceUrl.protocol === 'https:') {
+                    const sourceLink = document.createElement('a');
+                    sourceLink.className = 'recipe-source-link';
+                    sourceLink.href = sourceUrl.href;
+                    sourceLink.target = '_blank';
+                    sourceLink.rel = 'noopener noreferrer';
+                    sourceLink.textContent = 'Open original recipe';
+                    card.appendChild(sourceLink);
+                }
+            } catch (error) {
+                // Ignore invalid source URLs in older imported data.
+            }
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'meal-card-actions';
+        [
+            ['View', 'btn-secondary', () => this.viewRecipe(recipe.id)],
+            ['Edit', 'btn-secondary', () => this.editRecipe(recipe.id)],
+            ['Delete', 'btn-danger', () => this.deleteRecipe(recipe.id)]
+        ].forEach(([label, style, handler]) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `btn ${style} btn-sm`;
+            button.textContent = label;
+            button.addEventListener('click', handler);
+            actions.appendChild(button);
+        });
+        card.appendChild(actions);
 
         return card;
     }
@@ -828,7 +948,246 @@ class UIManager {
         this.currentEditingRecipeId = null;
         document.getElementById('recipe-modal-title').textContent = 'Add Recipe';
         document.getElementById('recipe-form').reset();
+        document.getElementById('recipe-import-status').textContent = '';
+        document.getElementById('recipe-import-status').className = 'recipe-import-status';
+        document.getElementById('recipe-import-preview').hidden = true;
+        this.populateRecipeMealOptions(null);
         document.getElementById('recipe-modal').classList.add('active');
+    }
+
+    populateRecipeMealOptions(selectedMealId) {
+        const select = document.getElementById('recipe-meal-link');
+        select.replaceChildren(new Option('Not linked to a meal', ''));
+        window.repository.getAllMeals().forEach(meal => {
+            const option = new Option(`${meal.name} (${meal.mealType})`, meal.id);
+            select.appendChild(option);
+        });
+        select.value = selectedMealId || '';
+    }
+
+    async importRecipeFromUrl() {
+        const urlInput = document.getElementById('recipe-import-url');
+        const status = document.getElementById('recipe-import-status');
+        const button = document.getElementById('btn-import-recipe-url');
+        const sourceUrl = urlInput.value.trim();
+
+        if (!sourceUrl) {
+            status.textContent = 'Enter a recipe webpage link first.';
+            status.className = 'recipe-import-status error';
+            return;
+        }
+
+        let parsedUrl;
+        try {
+            parsedUrl = new URL(sourceUrl);
+        } catch (error) {
+            status.textContent = 'Enter a valid recipe webpage link.';
+            status.className = 'recipe-import-status error';
+            return;
+        }
+
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+            status.textContent = 'Recipe links must start with http:// or https://.';
+            status.className = 'recipe-import-status error';
+            return;
+        }
+
+        button.disabled = true;
+        status.textContent = 'Loading recipe details...';
+        status.className = 'recipe-import-status';
+
+        try {
+            const response = await fetch(parsedUrl.href, { credentials: 'omit' });
+            if (!response.ok) {
+                throw new Error(`The website returned ${response.status}.`);
+            }
+
+            const html = await response.text();
+            const recipeData = this.extractRecipeData(html);
+            if (!recipeData) {
+                throw new Error('No supported recipe data was found on that page.');
+            }
+            if (recipeData.imageUrl) {
+                const imageUrl = new URL(recipeData.imageUrl, parsedUrl.href);
+                recipeData.imageUrl = imageUrl.protocol === 'http:' || imageUrl.protocol === 'https:'
+                    ? imageUrl.href
+                    : '';
+            }
+
+            document.getElementById('recipe-source-url').value = parsedUrl.href;
+            if (recipeData.name) document.getElementById('recipe-name').value = recipeData.name;
+            if (recipeData.prepTime !== null) document.getElementById('recipe-prep-time').value = recipeData.prepTime;
+            if (recipeData.cookTime !== null) document.getElementById('recipe-cook-time').value = recipeData.cookTime;
+            if (recipeData.servings !== null) document.getElementById('recipe-servings').value = recipeData.servings;
+            if (recipeData.ingredients.length) {
+                document.getElementById('recipe-ingredients').value = recipeData.ingredients.join('\n');
+            }
+            if (recipeData.instructions.length) {
+                document.getElementById('recipe-instructions').value = recipeData.instructions.join('\n');
+            }
+            if (recipeData.description) document.getElementById('recipe-notes').value = recipeData.description;
+            if (recipeData.tags.length) document.getElementById('recipe-tags').value = recipeData.tags.join(', ');
+            if (recipeData.imageUrl) document.getElementById('recipe-image-url').value = recipeData.imageUrl;
+
+            document.getElementById('recipe-import-preview').hidden = false;
+            this.refreshRecipePreview();
+            status.textContent = 'Recipe details loaded. Review them and save the recipe.';
+            status.className = 'recipe-import-status success';
+        } catch (error) {
+            status.textContent = `${error.message} This site may block browser access (CORS). You can still save the link and enter the details manually.`;
+            status.className = 'recipe-import-status error';
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    refreshRecipePreview() {
+        const preview = document.getElementById('recipe-import-preview');
+        if (preview.hidden) return;
+
+        preview.replaceChildren();
+        const heading = document.createElement('h3');
+        heading.textContent = document.getElementById('recipe-name').value || 'Recipe preview';
+        preview.appendChild(heading);
+
+        const sourceUrl = document.getElementById('recipe-source-url').value.trim();
+        if (sourceUrl) {
+            try {
+                const parsedSourceUrl = new URL(sourceUrl);
+                if (parsedSourceUrl.protocol === 'http:' || parsedSourceUrl.protocol === 'https:') {
+                    const sourceLink = document.createElement('a');
+                    sourceLink.href = parsedSourceUrl.href;
+                    sourceLink.target = '_blank';
+                    sourceLink.rel = 'noopener noreferrer';
+                    sourceLink.textContent = 'Open source page';
+                    preview.appendChild(sourceLink);
+                }
+            } catch (error) {
+                // An invalid or partial source URL is omitted from the preview.
+            }
+        }
+
+        const imageUrl = document.getElementById('recipe-image-url').value.trim();
+        if (imageUrl) {
+            try {
+                const parsedImageUrl = new URL(imageUrl);
+                if (parsedImageUrl.protocol === 'http:' || parsedImageUrl.protocol === 'https:') {
+                    const image = document.createElement('img');
+                    image.src = parsedImageUrl.href;
+                    image.alt = heading.textContent;
+                    image.loading = 'lazy';
+                    image.referrerPolicy = 'no-referrer';
+                    preview.appendChild(image);
+                }
+            } catch (error) {
+                // An invalid or partial image URL is omitted from the preview.
+            }
+        }
+
+        const ingredients = document.getElementById('recipe-ingredients').value
+            .split('\n').map(line => line.trim()).filter(Boolean);
+        const instructions = document.getElementById('recipe-instructions').value
+            .split('\n').map(line => line.trim()).filter(Boolean);
+        this.appendRecipePreviewList(preview, 'Ingredients', ingredients, 'ul');
+        this.appendRecipePreviewList(preview, 'Steps', instructions, 'ol');
+    }
+
+    appendRecipePreviewList(container, title, values, listTag) {
+        const section = document.createElement('section');
+        const heading = document.createElement('h4');
+        heading.textContent = title;
+        section.appendChild(heading);
+
+        if (values.length) {
+            const list = document.createElement(listTag);
+            values.forEach(value => {
+                const item = document.createElement('li');
+                item.textContent = value;
+                list.appendChild(item);
+            });
+            section.appendChild(list);
+        } else {
+            const empty = document.createElement('p');
+            empty.textContent = `No ${title.toLowerCase()} found.`;
+            section.appendChild(empty);
+        }
+        container.appendChild(section);
+    }
+
+    extractRecipeData(html) {
+        const documentFromPage = new DOMParser().parseFromString(html, 'text/html');
+        const recipeNodes = [];
+
+        const collectRecipes = (value) => {
+            if (Array.isArray(value)) {
+                value.forEach(collectRecipes);
+                return;
+            }
+            if (!value || typeof value !== 'object') return;
+
+            const types = Array.isArray(value['@type']) ? value['@type'] : [value['@type']];
+            if (types.includes('Recipe')) recipeNodes.push(value);
+            Object.values(value).forEach(collectRecipes);
+        };
+
+        documentFromPage.querySelectorAll('script[type="application/ld+json"]').forEach(script => {
+            try {
+                collectRecipes(JSON.parse(script.textContent));
+            } catch (error) {
+                // Ignore malformed JSON-LD blocks and inspect the other structured data.
+            }
+        });
+
+        const recipe = recipeNodes[0];
+        if (!recipe) return null;
+
+        const toMinutes = (duration) => {
+            if (typeof duration !== 'string') return null;
+            const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
+            if (!match) return null;
+            return (parseInt(match[1] || '0', 10) * 60) +
+                parseInt(match[2] || '0', 10) +
+                (parseInt(match[3] || '0', 10) > 0 ? 1 : 0);
+        };
+
+        const flattenInstructions = (instructions) => {
+            if (typeof instructions === 'string') return [instructions.trim()].filter(Boolean);
+            if (!Array.isArray(instructions)) instructions = instructions ? [instructions] : [];
+            return instructions.flatMap(step => {
+                if (typeof step === 'string') return [step.trim()].filter(Boolean);
+                if (!step || typeof step !== 'object') return [];
+                if (step.itemListElement) return flattenInstructions(step.itemListElement);
+                if (step.text || step.name) return [String(step.text || step.name).trim()];
+                return [];
+            }).filter(Boolean);
+        };
+
+        const yieldValue = Array.isArray(recipe.recipeYield) ? recipe.recipeYield[0] : recipe.recipeYield;
+        const servingsMatch = String(yieldValue || '').match(/\d+/);
+        const keywords = Array.isArray(recipe.keywords)
+            ? recipe.keywords
+            : String(recipe.keywords || '').split(',');
+        const categories = Array.isArray(recipe.recipeCategory)
+            ? recipe.recipeCategory
+            : [recipe.recipeCategory];
+        const imageValue = Array.isArray(recipe.image) ? recipe.image[0] : recipe.image;
+        const imageUrl = typeof imageValue === 'string'
+            ? imageValue
+            : imageValue && typeof imageValue === 'object'
+                ? (imageValue.url || imageValue.contentUrl || '')
+                : '';
+
+        return {
+            name: typeof recipe.name === 'string' ? recipe.name : '',
+            prepTime: toMinutes(recipe.prepTime),
+            cookTime: toMinutes(recipe.cookTime),
+            servings: servingsMatch ? parseInt(servingsMatch[0], 10) : null,
+            ingredients: Array.isArray(recipe.recipeIngredient) ? recipe.recipeIngredient : [],
+            instructions: flattenInstructions(recipe.recipeInstructions),
+            description: typeof recipe.description === 'string' ? recipe.description : '',
+            imageUrl,
+            tags: [...keywords, ...categories].filter(value => typeof value === 'string').map(value => value.trim()).filter(Boolean)
+        };
     }
 
     viewRecipe(recipeId) {
@@ -845,8 +1204,15 @@ class UIManager {
 
         this.currentEditingRecipeId = recipeId;
         document.getElementById('recipe-modal-title').textContent = 'Edit Recipe';
+        document.getElementById('recipe-import-preview').hidden = true;
+        this.populateRecipeMealOptions(recipe.mealId);
 
         document.getElementById('recipe-name').value = recipe.name;
+        document.getElementById('recipe-source-url').value = recipe.sourceUrl || '';
+        document.getElementById('recipe-import-url').value = recipe.sourceUrl || '';
+        document.getElementById('recipe-image-url').value = recipe.imageUrl || '';
+        document.getElementById('recipe-import-status').textContent = '';
+        document.getElementById('recipe-import-status').className = 'recipe-import-status';
         document.getElementById('recipe-difficulty').value = recipe.difficulty;
         document.getElementById('recipe-prep-time').value = recipe.prepTime;
         document.getElementById('recipe-cook-time').value = recipe.cookTime;
@@ -874,6 +1240,9 @@ class UIManager {
 
         const recipeData = {
             name: document.getElementById('recipe-name').value,
+            sourceUrl: document.getElementById('recipe-source-url').value,
+            imageUrl: document.getElementById('recipe-image-url').value,
+            mealId: document.getElementById('recipe-meal-link').value || null,
             difficulty: document.getElementById('recipe-difficulty').value,
             prepTime: parseInt(document.getElementById('recipe-prep-time').value) || 0,
             cookTime: parseInt(document.getElementById('recipe-cook-time').value) || 0,

@@ -21,6 +21,9 @@ class Storage {
         if (!this.get('current-week')) {
             this.set('current-week', null);
         }
+        if (!this.get('weekly-plans')) {
+            this.set('weekly-plans', {});
+        }
         if (!this.get('shopping-list')) {
             this.set('shopping-list', []);
         }
@@ -102,7 +105,6 @@ class Storage {
         return {
             cookForDays: 2,
             historyWeeksToAvoid: 4,
-            defaultSchoolLunchDays: ['Monday', 'Wednesday', 'Friday'],
             darkMode: false
         };
     }
@@ -146,12 +148,14 @@ class Storage {
     }
 
     // History management
-    saveToHistory(weekNumber, year, plan, statistics = {}) {
+    saveToHistory(weekNumber, year, plan, statistics = {}, weekDates = {}) {
         const key = `${year}-W${String(weekNumber).padStart(2, '0')}`;
         const historyItem = {
             weekNumber,
             year,
             key,
+            weekStartDate: weekDates.weekStartDate || null,
+            weekEndDate: weekDates.weekEndDate || null,
             plan,
             statistics,
             approvedDate: new Date().toISOString(),
@@ -182,8 +186,11 @@ class Storage {
             rules: this.get('rules', []),
             settings: this.get('settings', {}),
             currentWeek: this.get('current-week'),
+            weeklyPlans: this.get('weekly-plans', {}),
             shoppingList: this.get('shopping-list', []),
             history: this.get('history', {}),
+            recipes: this.get('recipes', []),
+            mealComponents: this.get('meal-components', { proteins: [], starches: [], vegetables: [] }),
             exportDate: new Date().toISOString()
         };
         return JSON.stringify(data, null, 2);
@@ -196,8 +203,11 @@ class Storage {
             this.set('rules', data.rules || this.getDefaultRules());
             this.set('settings', data.settings || this.getDefaultSettings());
             this.set('current-week', data.currentWeek || null);
+            this.set('weekly-plans', data.weeklyPlans || {});
             this.set('shopping-list', data.shoppingList || []);
             this.set('history', data.history || {});
+            this.set('recipes', data.recipes || []);
+            this.set('meal-components', data.mealComponents || { proteins: [], starches: [], vegetables: [] });
             return true;
         } catch (e) {
             console.error('Import error:', e);
