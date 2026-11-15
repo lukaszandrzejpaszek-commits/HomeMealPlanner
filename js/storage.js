@@ -41,7 +41,7 @@ class Storage {
             {
                 id: 'component-repeat-policy',
                 name: 'Limit repeated components',
-                description: 'Breakfast can repeat on two consecutive mornings. Protein can repeat on consecutive days only between lunch and dinner. Neither can appear again that week. Fruit cannot repeat on the same day or consecutive days, except for configured meal prep. Starch and vegetables can repeat.',
+                description: 'Breakfast cannot repeat within the week. Protein can repeat on consecutive days only between lunch and dinner, then cannot appear again that week. Fruit cannot repeat on the same day or consecutive days, except for configured meal prep. Starch and vegetables can repeat.',
                 enabled: true,
                 strength: 100,
                 type: 'builtin'

@@ -89,6 +89,33 @@
         }
         assert(!weekendPlanner.isMealAvailableOnDay({ id: 'legacy', weekendOnly: true }, 2),
             'A standalone weekend-only meal must be excluded on weekdays');
+        const priorityRules = {
+            getRules: () => [],
+            scoreMealPlacement: candidate => candidate.score
+        };
+        const priorityPlanner = new window.planner.constructor(weekendStorage, weekendRepo, priorityRules);
+        const ordinary = { id: 'ordinary', score: 10000 };
+        const weekendOne = { id: 'weekend-one', score: 1, componentItems: {
+            protein: { id: 'weekend-protein', weekendOnly: true }
+        } };
+        const weekendTwo = { id: 'weekend-two', score: 0, componentItems: {
+            protein: { id: 'weekend-protein', weekendOnly: true },
+            starch: { id: 'weekend-starch', weekendOnly: true }
+        } };
+        const priorityPlan = priorityPlanner.initializeEmptyPlan();
+        assert(priorityPlanner.selectBestMeal([ordinary, weekendOne], priorityPlan, 0, 'dinner').id === 'weekend-one' &&
+            priorityPlanner.selectBestMeal([ordinary, weekendOne], priorityPlan, 1, 'dinner').id === 'weekend-one' &&
+            priorityPlanner.selectBestMeal([ordinary, weekendOne], priorityPlan, 2, 'dinner').id === 'ordinary',
+            'Weekend-only components must take priority over higher-scoring ordinary meals on weekends only');
+        assert(priorityPlanner.selectBestMeal([weekendOne, weekendTwo], priorityPlan, 0, 'dinner').id === 'weekend-two',
+            'Eligible combinations with more weekend-only components must be preferred');
+        const betterWeekend = { ...weekendOne, id: 'better-weekend', score: 2 };
+        assert(priorityPlanner.selectBestMeal([weekendOne, betterWeekend], priorityPlan, 0, 'dinner').id === 'better-weekend',
+            'Normal scoring must break ties between equally preferred weekend combinations');
+        const duplicatedItem = { id: 'same-component', weekendOnly: true };
+        assert(priorityPlanner.getWeekendOnlyCount({ componentItems: {
+            protein: duplicatedItem, vegetable: duplicatedItem
+        } }) === 1, 'A component used in multiple categories must count only once');
         weekendPlanner.setMealComponent(2, 'breakfast', 'breakfast', pancakes.id);
         assert(weekendPlanner.getCurrentWeek().plan.Monday.breakfast.componentItems.breakfast.id === pancakes.id,
             'Manual selection must allow weekend-only components on weekdays');
@@ -371,15 +398,33 @@
         const secondBreakfast = { componentItems: {
             breakfast: { id: 'pancakes' }, fruit: { id: 'pear' }
         } };
-        assert(window.planner.selectBestMeal([secondBreakfast], weekComparison, 1, 'breakfast'),
-            'A non-meal-prep breakfast can repeat the next morning despite the consecutive rule');
-        assert(!window.planner.selectBestMeal([breakfastMeal], weekComparison, 1, 'breakfast'),
-            'The same fruit still cannot repeat on consecutive days');
-        weekComparison.Tuesday.breakfast = secondBreakfast;
-        assert(window.ruleEngine.applyRule(weekly, breakfastMeal, weekComparison, 2, 'breakfast') === 0,
-            'Breakfast must not appear on a third day');
-        weekComparison.Tuesday.breakfast = null;
+        assert(!window.planner.selectBestMeal([secondBreakfast], weekComparison, 1, 'breakfast'),
+            'A breakfast component must not repeat on consecutive days even with different fruit');
+        const prepBreakfast = structuredClone(secondBreakfast);
+        prepBreakfast.componentItems.breakfast.mealPrepFriendly = true;
+        prepBreakfast.componentItems.breakfast.mealPrepDays = 2;
+        assert(!window.planner.selectBestMeal([prepBreakfast], weekComparison, 1, 'breakfast'),
+            'Meal prep must not exempt breakfast from the weekly restriction');
+        assert(window.ruleEngine.applyRule(weekly, breakfastMeal, weekComparison, 0, 'breakfast') === 100,
+            'Replacing the current breakfast slot must not conflict with itself');
+        const ordinaryBreakfast = { id: 'ordinary-breakfast', componentItems: {
+            breakfast: { id: 'toast' }, fruit: { id: 'pear' }
+        } };
+        const weekendBreakfast = { id: 'weekend-breakfast', componentItems: {
+            breakfast: { id: 'pancakes', weekendOnly: true }, fruit: { id: 'apple' }
+        } };
+        assert(window.planner.selectBestMeal([weekendBreakfast, ordinaryBreakfast], weekComparison, 5, 'breakfast')
+            .id === 'ordinary-breakfast', 'Weekend priority must not bypass the breakfast repeat rule');
         weekComparison.Monday.breakfast = null;
+        weekComparison.Friday.breakfast = breakfastMeal;
+        assert(!window.planner.selectBestMeal([secondBreakfast], weekComparison, 0, 'breakfast'),
+            'Regenerating an earlier day must check breakfasts later in the week');
+        weekComparison.Friday.breakfast = null;
+        weekComparison.Friday.breakfast = { components: { breakfast: 'Pancakes', fruit: 'Apple' } };
+        assert(!window.planner.selectBestMeal(
+            [{ components: { breakfast: 'Pancakes', fruit: 'Pear' } }], weekComparison, 0, 'breakfast'),
+            'The breakfast restriction must recognize legacy components');
+        weekComparison.Friday.breakfast = null;
         const sharedProtein = { componentItems: {
             protein: meal.componentItems.protein, starch: { id: 'other-starch' }
         } };
@@ -460,10 +505,30 @@
         const simpleEngine = new window.ruleEngine.constructor(simpleStorage, simpleRepository);
         const simplePlanner = new window.planner.constructor(simpleStorage, simpleRepository, simpleEngine);
         const simplePlan = simplePlanner.generateWeekPlan();
-        assert(simplePlan.Monday.breakfast && simplePlan.Tuesday.breakfast && !simplePlan.Wednesday.breakfast &&
+        assert(simplePlan.Monday.breakfast && !simplePlan.Tuesday.breakfast && !simplePlan.Wednesday.breakfast &&
             simplePlan.Monday.lunch && simplePlan.Tuesday.dinner &&
             !simplePlan.Tuesday.lunch && !simplePlan.Wednesday.lunch && !simplePlan.Wednesday.dinner,
-            'Generation must allow exactly two consecutive breakfasts and a lunch-to-dinner protein pair');
+            'Generation must use a breakfast only once but still allow a lunch-to-dinner protein pair');
+        const rotatedData = { rules: [weekly], settings: { planningStartDay: 'Saturday' } };
+        const rotatedStorage = {
+            get(key, fallback) { return rotatedData[key] === undefined ? fallback : structuredClone(rotatedData[key]); },
+            set(key, value) { rotatedData[key] = structuredClone(value); }
+        };
+        const rotatedRepo = { getPlanningMealsByType(type) {
+            return type === 'Breakfast' ? [ordinaryBreakfast, weekendBreakfast] : [];
+        } };
+        const rotatedEngine = new window.ruleEngine.constructor(rotatedStorage, rotatedRepo);
+        const rotatedPlanner = new window.planner.constructor(rotatedStorage, rotatedRepo, rotatedEngine);
+        const generatedWeekend = rotatedPlanner.generateWeekPlan();
+        assert(generatedWeekend.Saturday.breakfast.id === 'weekend-breakfast' &&
+            generatedWeekend.Sunday.breakfast.id === 'ordinary-breakfast' &&
+            !generatedWeekend.Monday.breakfast,
+            'Generation must prefer a weekend breakfast once and fall back rather than repeat it');
+        const laterWeekend = rotatedPlanner.initializeEmptyPlan();
+        laterWeekend.Sunday.breakfast = weekendBreakfast;
+        rotatedPlanner.saveCurrentWeek(rotatedPlanner.createWeekRecord(laterWeekend));
+        assert(rotatedPlanner.regenerateDay(0).Saturday.breakfast.id === 'ordinary-breakfast',
+            'Regeneration must not prioritize a weekend breakfast already used later in the week');
         data.rules.pop();
 
         const plan = window.planner.generateWeekPlan();

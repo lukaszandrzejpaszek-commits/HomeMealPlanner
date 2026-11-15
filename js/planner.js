@@ -160,13 +160,20 @@ class Planner {
         const day = this.days[dayIndex];
         if (!day) throw new Error('Invalid planner day.');
         return day === 'Saturday' || day === 'Sunday' ||
-            !(meal.weekendOnly === true || Object.values(meal.componentItems || {})
-                .some(item => item && item.weekendOnly === true));
+            this.getWeekendOnlyCount(meal) === 0;
+    }
+
+    getWeekendOnlyCount(meal) {
+        const ids = new Set(Object.values(meal.componentItems || {})
+            .filter(item => item && item.weekendOnly === true).map(item => item.id));
+        return Math.max(ids.size, meal.weekendOnly === true ? 1 : 0);
     }
 
     selectBestMeal(availableMeals, plan, dayIndex, mealType) {
         let bestMeal = null;
         let bestScore = -Infinity;
+        let bestWeekendCount = -1;
+        const isWeekend = ['Saturday', 'Sunday'].includes(this.days[dayIndex]);
         const requiredRules = this.ruleEngine.getRules().filter(rule =>
             rule.id === 'component-repeat-policy' && rule.enabled
         );
@@ -178,9 +185,11 @@ class Planner {
                 continue;
             }
             const score = this.ruleEngine.scoreMealPlacement(meal, plan, dayIndex, mealType);
+            const weekendCount = isWeekend ? this.getWeekendOnlyCount(meal) : 0;
 
-            if (score > bestScore) {
+            if (weekendCount > bestWeekendCount || (weekendCount === bestWeekendCount && score > bestScore)) {
                 bestScore = score;
+                bestWeekendCount = weekendCount;
                 bestMeal = { ...meal };
             }
         }

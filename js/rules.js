@@ -126,6 +126,8 @@ class RuleEngine {
     }
 
     ruleAvoidComponentWeek(meal, plan, dayIndex, mealTimeType) {
+        const breakfastIds = new Set(mealTimeType === 'breakfast'
+            ? this.getRepeatItems(meal, ['breakfast']).map(item => item.id) : []);
         for (const item of this.getWeeklyRepeatItems(meal)) {
             const uses = [];
             for (let index = 0; index < this.days.length; index++) {
@@ -138,13 +140,11 @@ class RuleEngine {
                     }
                 }
             }
-            if (uses.length > 1) return 0;
+            if ((breakfastIds.has(item.id) && uses.length) || uses.length > 1) return 0;
             if (uses.length === 1) {
                 const previous = uses[0];
-                const validMealTypes = mealTimeType === 'breakfast'
-                    ? previous.mealType === 'breakfast'
-                    : (mealTimeType === 'lunch' && previous.mealType === 'dinner') ||
-                      (mealTimeType === 'dinner' && previous.mealType === 'lunch');
+                const validMealTypes = (mealTimeType === 'lunch' && previous.mealType === 'dinner') ||
+                    (mealTimeType === 'dinner' && previous.mealType === 'lunch');
                 if (Math.abs(previous.dayIndex - dayIndex) !== 1 || !validMealTypes) return 0;
             }
         }

@@ -24,7 +24,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 2. Select the ISO week containing the start date; its seven-day date range is shown
 3. Click **🎲 Generate Week**
 4. Watch the algorithm create an optimal plan!
-5. The repeat rule allows a breakfast twice on consecutive mornings, or a protein twice on consecutive days in different meal slots (lunch then dinner, or dinner then lunch). Neither may appear again that week. Fruit cannot repeat on the same day or consecutive days, except for configured meal prep; starch and vegetables can repeat. Limited variety can leave slots empty.
+5. The repeat rule prevents breakfast components from repeating during the week. It allows a protein twice on consecutive days in different meal slots (lunch then dinner, or dinner then lunch), but not again that week. Fruit cannot repeat on the same day or consecutive days, except for configured meal prep; starch and vegetables can repeat. Limited variety can leave slots empty.
 
 ### Step 3: Approve the Plan
 1. Review the generated meals
@@ -52,7 +52,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **School lunch**: Choose school lunch separately on each day in the planner
 - **Future week**: Select a later week to generate and save a separate plan
 - **Meal components**: Breakfast combines a Breakfast component and fruit; lunch and dinner combine protein, starch and vegetables. Assign the Breakfast category and meal type to components you want in the breakfast slot. Use the **+** buttons to fill a row manually; manual choices can override repeat rules.
-- **Weekend only**: Enable this on a component to use it automatically only on Saturday or Sunday. Manual weekday selection is still allowed.
+- **Weekend only**: Enable this on a component to prioritize it automatically on Saturday and Sunday and exclude it on weekdays. Eligible combinations with more weekend-only components take priority. Manual weekday selection is still allowed.
 - **Multiple meal types**: Assign a component to any combination of breakfast, lunch, and dinner.
 - **Adjust rules**: Go to Rules to toggle rules on/off or adjust the strength of scoring preferences. The repeat rule is strict and has no strength slider.
 - **Vary starches and vegetables**: This scoring preference favors sides used less often in the week, without banning repeats. Adjust its strength or switch it off under Rules.
