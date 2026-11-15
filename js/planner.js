@@ -148,6 +148,22 @@ class Planner {
         return plan;
     }
 
+    clearPlan() {
+        const currentWeek = this.getCurrentWeek() || this.createWeekRecord(this.initializeEmptyPlan());
+        currentWeek.plan = this.initializeEmptyPlan();
+        this.markWeekDraft(currentWeek);
+        this.saveCurrentWeek(currentWeek);
+        return currentWeek.plan;
+    }
+
+    isMealAvailableOnDay(meal, dayIndex) {
+        const day = this.days[dayIndex];
+        if (!day) throw new Error('Invalid planner day.');
+        return day === 'Saturday' || day === 'Sunday' ||
+            !(meal.weekendOnly === true || Object.values(meal.componentItems || {})
+                .some(item => item && item.weekendOnly === true));
+    }
+
     selectBestMeal(availableMeals, plan, dayIndex, mealType) {
         let bestMeal = null;
         let bestScore = -Infinity;
@@ -156,7 +172,7 @@ class Planner {
         );
 
         for (const meal of availableMeals) {
-            if (requiredRules.some(rule =>
+            if (!this.isMealAvailableOnDay(meal, dayIndex) || requiredRules.some(rule =>
                 this.ruleEngine.applyRule(rule, meal, plan, dayIndex, mealType) === 0
             )) {
                 continue;

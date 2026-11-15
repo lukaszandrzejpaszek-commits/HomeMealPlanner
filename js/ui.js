@@ -54,6 +54,7 @@ class UIManager {
             }
         });
         document.getElementById('btn-generate-week').addEventListener('click', () => this.generateWeek());
+        document.getElementById('btn-clear-plan').addEventListener('click', () => this.clearPlan());
         document.getElementById('btn-approve-plan').addEventListener('click', () => this.approvePlan());
         document.getElementById('btn-regenerate-breakfast').addEventListener('click', () => this.regenerateMealType('breakfast'));
         document.getElementById('btn-regenerate-lunch').addEventListener('click', () => this.regenerateMealType('lunch'));
@@ -427,6 +428,16 @@ class UIManager {
             : 'No complete meals are available.' + this.getEmptySlotsMessage(plan));
     }
 
+    clearPlan() {
+        if (!confirm('Clear all meals and school lunch selections from this week? Approved history will not change.')) return;
+        try {
+            window.planner.clearPlan();
+            this.displayCurrentWeek();
+        } catch (error) {
+            alert(`Could not clear the plan: ${error.message}`);
+        }
+    }
+
     regenerateMealType(mealType) {
         const plan = window.planner.regenerateMealType(mealType);
         this.displayCurrentWeek();
@@ -438,13 +449,17 @@ class UIManager {
         let missing = 0;
         let conflicts = 0;
         let pairings = 0;
+        let weekendOnly = 0;
         const available = Object.fromEntries(mealTypes.map(type =>
             [type, window.repository.getPlanningMealsByType(type.charAt(0).toUpperCase() + type.slice(1))]
         ));
-        Object.values(plan).forEach(day => {
+        Object.entries(plan).forEach(([dayName, day]) => {
             mealTypes.forEach(type => {
                 if (day[type] || (type === 'lunch' && day.schoolLunch)) return;
-                if (available[type].length) conflicts++;
+                if (available[type].length && !available[type].some(meal =>
+                    window.planner.isMealAvailableOnDay(meal, window.planner.days.indexOf(dayName))
+                )) weekendOnly++;
+                else if (available[type].length) conflicts++;
                 else {
                     const slots = window.repository.getMealSlots(type);
                     if (type !== 'breakfast' && slots.every(slot =>
@@ -458,6 +473,7 @@ class UIManager {
         if (conflicts) messages.push(`${conflicts} slot(s) left empty to follow the component repetition rules.`);
         if (missing) messages.push(`${missing} slot(s) lack required components for that meal type.`);
         if (pairings) messages.push(`${pairings} slot(s) have no allowed protein, starch and vegetable combination. Check protein pairings and component meal types.`);
+        if (weekendOnly) messages.push(`${weekendOnly} slot(s) have only weekend-only combinations available.`);
         if (messages.length) messages.push('Add more meals or meal components, then regenerate.');
         return messages.length ? '\n\n' + messages.join('\n') : '';
     }
@@ -510,7 +526,7 @@ class UIManager {
             const item = document.createElement('button');
             item.type = 'button';
             item.className = 'meal-picker-item';
-            item.textContent = component.name;
+            item.textContent = component.name + (component.weekendOnly ? ' (Weekend only)' : '');
             item.addEventListener('click', () => this.selectMealComponent(component.id));
             list.appendChild(item);
         });
@@ -654,6 +670,7 @@ class UIManager {
                 <span class="badge">${mealTypes.join(', ')}</span>
                 ${categories.map(category => `<span class="badge">${category}</span>`).join('')}
                 <span class="badge">${meal.cuisine}</span>
+                ${meal.weekendOnly ? '<span class="badge">Weekend only</span>' : ''}
                 ${categories.includes('Protein') && meal.protein ? `<span class="badge">${meal.protein}</span>` : ''}
                 ${categories.includes('Protein') && (meal.pairings?.starches?.length || meal.pairings?.vegetables?.length) ? '<span class="badge">Pairings restricted</span>' : ''}
                 <span class="badge">${meal.difficulty}</span>
@@ -769,6 +786,7 @@ class UIManager {
         document.getElementById('meal-cuisine').value = meal.cuisine;
         this.setMealProtein(meal.protein || '');
         document.getElementById('meal-difficulty').value = meal.difficulty;
+        document.getElementById('meal-weekend-only').checked = meal.weekendOnly === true;
         document.getElementById('meal-prep-friendly').checked = meal.mealPrepFriendly;
         document.getElementById('meal-prep-days').value = meal.mealPrepDays || 2;
         document.getElementById('meal-prep-days-group').style.display = meal.mealPrepFriendly ? 'grid' : 'none';
@@ -804,6 +822,7 @@ class UIManager {
             cuisine: document.getElementById('meal-cuisine').value,
             protein: document.getElementById('meal-protein').value || document.getElementById('meal-protein-custom').value,
             difficulty: document.getElementById('meal-difficulty').value,
+            weekendOnly: document.getElementById('meal-weekend-only').checked,
             mealPrepFriendly: document.getElementById('meal-prep-friendly').checked,
             mealPrepDays: parseInt(document.getElementById('meal-prep-days').value) || 0,
             ingredients: document.getElementById('meal-ingredients').value,

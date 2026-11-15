@@ -190,7 +190,9 @@ The repeat rule is strict when enabled, so it has an on/off switch rather than a
 
 - **Cuisine Balance** shows flags for recognized national cuisines and a house for Home; other cuisine labels remain unchanged. Flag images are from [flag-icons](https://github.com/lipis/flag-icons) under the [MIT license](assets/flags/LICENSE).
 - **Regenerate** individual meal types or days
+- **Clear Plan** removes meals and school-lunch selections for the open week after confirmation. The week becomes a draft; history and other weeks remain unchanged.
 - **Add or replace** individual components with their **+** buttons
+- Mark a component **Weekend only** to limit automatic generation to Saturday and Sunday. It can still be selected manually on weekdays.
 - **Choose school lunch per day** with the checkbox in each day's planner card
 - The **Limit repeated components** rule allows a breakfast component on two consecutive mornings, or a protein on two consecutive days in different meal slots (lunch then dinner, or dinner then lunch). Each can appear at most twice in the week, regardless of meal-prep settings.
 - Fruit cannot repeat in different meal slots on the same day or on consecutive days, except for consecutive meal prep up to the configured limit. Starch and vegetables can repeat; protein pairings still apply, and the food-group preference may affect scoring. The rule may leave slots empty; manual choices can override it.

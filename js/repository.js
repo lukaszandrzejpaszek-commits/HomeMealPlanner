@@ -26,6 +26,7 @@ class Repository {
             foodGroups: this.parseList(mealData.foodGroups),
             mealPrepFriendly: mealData.mealPrepFriendly || false,
             mealPrepDays: mealData.mealPrepDays || 0,
+            weekendOnly: mealData.weekendOnly === true,
             difficulty: mealData.difficulty || 'Medium',
             ingredients: this.parseList(mealData.ingredients),
             tags: this.parseList(mealData.tags),
@@ -68,6 +69,8 @@ class Repository {
             foodGroups: this.parseList(mealData.foodGroups),
             mealPrepFriendly: mealData.mealPrepFriendly || false,
             mealPrepDays: mealData.mealPrepDays || 0,
+            weekendOnly: mealData.weekendOnly === undefined
+                ? meals[index].weekendOnly === true : mealData.weekendOnly === true,
             difficulty: mealData.difficulty || 'Medium',
             ingredients: this.parseList(mealData.ingredients),
             tags: this.parseList(mealData.tags)

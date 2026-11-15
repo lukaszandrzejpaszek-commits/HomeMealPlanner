@@ -50,6 +50,94 @@
         const pairingRepo = new window.repository.constructor(pairingStorage);
         const ruleStub = { getRules: () => [], scoreMealPlacement: () => 1 };
         const pairingPlanner = new window.planner.constructor(pairingStorage, pairingRepo, ruleStub);
+
+        const weekendData = {
+            meals: [], recipes: [], 'meal-components': { proteins: [], starches: [], vegetables: [] },
+            settings: { planningStartDay: 'Saturday' }, rules: [], history: { approved: { plan: 'snapshot' } }
+        };
+        const weekendStorage = {
+            get(key, fallback) { return weekendData[key] === undefined ? fallback : structuredClone(weekendData[key]); },
+            set(key, value) { weekendData[key] = structuredClone(value); }
+        };
+        const weekendRepo = new window.repository.constructor(weekendStorage);
+        const weekendPlanner = new window.planner.constructor(weekendStorage, weekendRepo, ruleStub);
+        const pancakes = weekendRepo.addMeal({
+            name: 'Pancakes', mealTypes: ['Breakfast'], categories: ['Breakfast'], weekendOnly: true
+        });
+        const toast = weekendRepo.addMeal({
+            name: 'Toast', mealTypes: ['Breakfast'], categories: ['Breakfast']
+        });
+        weekendRepo.addMeal({ name: 'Apple', mealTypes: ['Breakfast'], categories: ['Fruit'] });
+        weekendRepo.addMeal({ name: 'Chicken', mealTypes: ['Lunch', 'Dinner'], categories: ['Protein'] });
+        const weekendStarch = weekendRepo.addMeal({
+            name: 'Potatoes', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'], weekendOnly: true
+        });
+        weekendRepo.addMeal({ name: 'Carrot', mealTypes: ['Lunch', 'Dinner'], categories: ['Vegetables'] });
+        const weekendPlan = weekendPlanner.generateWeekPlan();
+        assert(weekendPlanner.days[0] === 'Saturday' && weekendPlan.Saturday.breakfast.componentItems.breakfast.id === pancakes.id &&
+            weekendPlan.Sunday.breakfast.componentItems.breakfast.id === pancakes.id &&
+            weekendPlan.Monday.breakfast.componentItems.breakfast.id === toast.id &&
+            weekendPlan.Saturday.lunch.componentItems.starch.id === weekendStarch.id &&
+            weekendPlan.Sunday.dinner.componentItems.starch.id === weekendStarch.id && !weekendPlan.Monday.lunch,
+            'Generation must use weekend-only breakfast and side components only on actual weekend days');
+        for (const key of ['breakfast', 'fruit', 'protein', 'starch', 'vegetable']) {
+            const candidate = { componentItems: { [key]: { id: key, weekendOnly: true } } };
+            assert(!weekendPlanner.isMealAvailableOnDay(candidate, 2) &&
+                weekendPlanner.isMealAvailableOnDay(candidate, 0) &&
+                weekendPlanner.isMealAvailableOnDay(candidate, 1),
+                `Weekend-only ${key} must be excluded on weekdays`);
+        }
+        assert(!weekendPlanner.isMealAvailableOnDay({ id: 'legacy', weekendOnly: true }, 2),
+            'A standalone weekend-only meal must be excluded on weekdays');
+        weekendPlanner.setMealComponent(2, 'breakfast', 'breakfast', pancakes.id);
+        assert(weekendPlanner.getCurrentWeek().plan.Monday.breakfast.componentItems.breakfast.id === pancakes.id,
+            'Manual selection must allow weekend-only components on weekdays');
+        assert(weekendPlanner.regenerateDay(2).Monday.breakfast.componentItems.breakfast.id === toast.id,
+            'Regenerating a weekday must replace a manually selected weekend-only component');
+        const regeneratedBreakfasts = weekendPlanner.regenerateMealType('breakfast');
+        assert(regeneratedBreakfasts.Saturday.breakfast.componentItems.breakfast.id === pancakes.id &&
+            regeneratedBreakfasts.Monday.breakfast.componentItems.breakfast.id === toast.id,
+            'Meal-type regeneration must respect weekend restrictions');
+        weekendRepo.updateMeal(pancakes.id, { ...pancakes, weekendOnly: false });
+        assert(!weekendRepo.getMeal(pancakes.id).weekendOnly,
+            'Editing a component must persist removal of the weekend restriction');
+        weekendRepo.updateMeal(pancakes.id, { ...pancakes, weekendOnly: true });
+        const otherUpdates = weekendRepo.getMeal(pancakes.id);
+        delete otherUpdates.weekendOnly;
+        weekendRepo.updateMeal(pancakes.id, otherUpdates);
+        assert(weekendRepo.getMeal(pancakes.id).weekendOnly,
+            'Updates that omit the new setting must preserve it');
+        const exportedWeekend = weekendRepo.exportMeals();
+        weekendRepo.importMeals(exportedWeekend);
+        assert(weekendRepo.getMeal(pancakes.id).weekendOnly,
+            'The weekend restriction must survive meal export and import');
+
+        const beforeClear = weekendPlanner.getCurrentWeek();
+        beforeClear.status = 'Approved';
+        beforeClear.approvedDate = '2026-01-01T00:00:00Z';
+        beforeClear.plan.Monday.schoolLunch = true;
+        beforeClear.editingHistoryKey = 'approved';
+        weekendPlanner.saveCurrentWeek(beforeClear);
+        const otherWeek = { plan: 'other week', status: 'Approved' };
+        weekendData['weekly-plans'].other = structuredClone(otherWeek);
+        const selectedWeek = weekendPlanner.getCurrentWeekInfo().weekKey;
+        const clearedPlan = weekendPlanner.clearPlan();
+        assert(Object.values(clearedPlan).every(day =>
+            !day.breakfast && !day.lunch && !day.dinner && !day.schoolLunch) &&
+            weekendPlanner.getCurrentWeek().status === 'Draft' &&
+            !weekendPlanner.getCurrentWeek().approvedDate &&
+            weekendPlanner.getCurrentWeek().editingHistoryKey === 'approved' &&
+            weekendPlanner.getCurrentWeekInfo().weekKey === selectedWeek &&
+            weekendData['weekly-plans'][selectedWeek].status === 'Draft' &&
+            weekendData['weekly-plans'].other.plan === 'other week' &&
+            weekendData.history.approved.plan === 'snapshot',
+            'Clearing must reset only the selected week, leave history intact and persist a draft');
+        const reopenedClear = new window.planner.constructor(weekendStorage, weekendRepo, ruleStub);
+        assert(reopenedClear.getCurrentWeek().status === 'Draft' &&
+            !reopenedClear.getCurrentWeek().plan.Monday.schoolLunch &&
+            !reopenedClear.getCurrentWeek().plan.Saturday.breakfast,
+            'The cleared plan must remain a draft after reopening');
+
         const rice = pairingRepo.addMeal({ name: 'Rice', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'] });
         const pasta = pairingRepo.addMeal({ name: 'Pasta', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'] });
         const bread = pairingRepo.addMeal({ name: 'Bread', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'] });

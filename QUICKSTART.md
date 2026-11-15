@@ -48,9 +48,11 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 ### Planning
 - **View or replace a component**: Click a planned component to see its recipes, or its **+** button to choose another
 - **Regenerate day**: Generate plan > Regenerate individual meals
+- **Clear plan**: Use **Clear Plan** to remove the open week's meals and school-lunch selections. The plan becomes a draft; approved history stays intact.
 - **School lunch**: Choose school lunch separately on each day in the planner
 - **Future week**: Select a later week to generate and save a separate plan
 - **Meal components**: Breakfast combines a Breakfast component and fruit; lunch and dinner combine protein, starch and vegetables. Assign the Breakfast category and meal type to components you want in the breakfast slot. Use the **+** buttons to fill a row manually; manual choices can override repeat rules.
+- **Weekend only**: Enable this on a component to use it automatically only on Saturday or Sunday. Manual weekday selection is still allowed.
 - **Multiple meal types**: Assign a component to any combination of breakfast, lunch, and dinner.
 - **Adjust rules**: Go to Rules to toggle rules on/off or adjust the strength of scoring preferences. The repeat rule is strict and has no strength slider.
 - **Vary starches and vegetables**: This scoring preference favors sides used less often in the week, without banning repeats. Adjust its strength or switch it off under Rules.
