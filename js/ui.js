@@ -269,18 +269,53 @@ class UIManager {
             const label = document.createElement('div');
             label.className = 'meal-slot-label';
             label.textContent = mealType.charAt(0).toUpperCase() + mealType.slice(1);
-            if (mealType === 'lunch') {
-                const schoolLunchLabel = document.createElement('label');
-                schoolLunchLabel.className = 'school-lunch-toggle';
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.checked = Boolean(dayPlan.schoolLunch);
-                checkbox.addEventListener('change', () => {
-                    window.planner.setSchoolLunch(dayIndex, checkbox.checked);
-                    this.displayCurrentWeek();
-                });
-                schoolLunchLabel.append(checkbox, document.createTextNode('School lunch'));
-                label.appendChild(schoolLunchLabel);
+            const isWeekend = dayName === 'Saturday' || dayName === 'Sunday';
+            const canOrder = ['Friday', 'Saturday', 'Sunday'].includes(dayName) && mealType !== 'breakfast';
+            if (mealType === 'lunch' || canOrder) {
+                const lunchOptions = document.createElement('div');
+                lunchOptions.className = 'lunch-options';
+                if (mealType === 'lunch' && !isWeekend) {
+                    const schoolLunchLabel = document.createElement('label');
+                    schoolLunchLabel.className = 'school-lunch-toggle';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = Boolean(dayPlan.schoolLunch);
+                    checkbox.addEventListener('change', () => {
+                        const plan = window.planner.setSchoolLunch(dayIndex, checkbox.checked);
+                        this.displayMealExclusionChange(plan, dayName, 'lunch', checkbox.checked);
+                    });
+                    schoolLunchLabel.append(checkbox, document.createTextNode('School lunch'));
+                    lunchOptions.appendChild(schoolLunchLabel);
+                }
+                if (mealType === 'lunch' && isWeekend) {
+                    const skipLabel = document.createElement('label');
+                    skipLabel.className = 'school-lunch-toggle';
+                    const skipCheckbox = document.createElement('input');
+                    skipCheckbox.type = 'checkbox';
+                    skipCheckbox.checked = Boolean(dayPlan.skipLunch);
+                    skipCheckbox.setAttribute('aria-label', `Skip lunch on ${dayName}`);
+                    skipCheckbox.addEventListener('change', () => {
+                        const plan = window.planner.setSkipLunch(dayIndex, skipCheckbox.checked);
+                        this.displayMealExclusionChange(plan, dayName, 'lunch', skipCheckbox.checked);
+                    });
+                    skipLabel.append(skipCheckbox, document.createTextNode('Skip lunch'));
+                    lunchOptions.appendChild(skipLabel);
+                }
+                if (canOrder) {
+                    const orderLabel = document.createElement('label');
+                    orderLabel.className = 'school-lunch-toggle';
+                    const orderCheckbox = document.createElement('input');
+                    orderCheckbox.type = 'checkbox';
+                    orderCheckbox.checked = Boolean(dayPlan[mealType === 'lunch' ? 'orderedLunch' : 'orderedDinner']);
+                    orderCheckbox.setAttribute('aria-label', `Order ${mealType} on ${dayName}`);
+                    orderCheckbox.addEventListener('change', () => {
+                        const plan = window.planner.setOrderedMeal(dayIndex, mealType, orderCheckbox.checked);
+                        this.displayMealExclusionChange(plan, dayName, mealType, orderCheckbox.checked);
+                    });
+                    orderLabel.append(orderCheckbox, document.createTextNode('Order food'));
+                    lunchOptions.appendChild(orderLabel);
+                }
+                label.appendChild(lunchOptions);
             }
             slot.appendChild(label);
 
@@ -290,6 +325,22 @@ class UIManager {
             if (mealType === 'lunch' && dayPlan.schoolLunch) {
                 mealItem.className += ' school-lunch';
                 mealItem.textContent = 'School Lunch';
+                if (isWeekend) {
+                    const clearSchoolLunch = document.createElement('button');
+                    clearSchoolLunch.type = 'button';
+                    clearSchoolLunch.className = 'btn btn-secondary btn-sm';
+                    clearSchoolLunch.textContent = 'Remove previous school lunch';
+                    clearSchoolLunch.addEventListener('click', () => {
+                        const plan = window.planner.setSchoolLunch(dayIndex, false);
+                        this.displayMealExclusionChange(plan, dayName, 'lunch', false);
+                    });
+                    mealItem.appendChild(clearSchoolLunch);
+                }
+            } else if (mealType === 'lunch' && dayPlan.skipLunch) {
+                mealItem.textContent = 'Lunch skipped';
+            } else if ((mealType === 'lunch' && dayPlan.orderedLunch) ||
+                (mealType === 'dinner' && dayPlan.orderedDinner)) {
+                mealItem.textContent = 'Order food';
             } else {
                 const meal = dayPlan[mealType];
                 const slots = window.repository.getMealSlots(mealType);
@@ -417,6 +468,15 @@ class UIManager {
         });
     }
 
+    displayMealExclusionChange(plan, dayName, mealType, enabled) {
+        this.displayCurrentWeek();
+        if (!enabled && !plan[dayName][mealType] &&
+            !window.planner.isMealExcluded(plan[dayName], mealType)) {
+            alert(`No meal could be generated for ${dayName} ${mealType}.` +
+                this.getEmptySlotsMessage({ [dayName]: plan[dayName] }, [mealType]));
+        }
+    }
+
     generateWeek() {
         const plan = window.planner.generateWeekPlan();
         this.displayCurrentWeek();
@@ -429,7 +489,7 @@ class UIManager {
     }
 
     clearPlan() {
-        if (!confirm('Clear all meals and school lunch selections from this week? Approved history will not change.')) return;
+        if (!confirm('Clear all meals, lunch and ordering selections from this week? Approved history will not change.')) return;
         try {
             window.planner.clearPlan();
             this.displayCurrentWeek();
@@ -455,7 +515,7 @@ class UIManager {
         ));
         Object.entries(plan).forEach(([dayName, day]) => {
             mealTypes.forEach(type => {
-                if (day[type] || (type === 'lunch' && day.schoolLunch)) return;
+                if (day[type] || window.planner.isMealExcluded(day, type)) return;
                 if (available[type].length && !available[type].some(meal =>
                     window.planner.isMealAvailableOnDay(meal, window.planner.days.indexOf(dayName))
                 )) weekendOnly++;
@@ -1022,8 +1082,10 @@ class UIManager {
                     row.className = 'history-meal';
                     const label = document.createElement('strong');
                     label.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)}: `;
-                    const name = type === 'lunch' && dayPlan?.schoolLunch
-                        ? 'School Lunch' : dayPlan?.[type]?.name || 'Not planned';
+                    const name = type === 'lunch' && dayPlan?.schoolLunch ? 'School Lunch'
+                        : type === 'lunch' && dayPlan?.skipLunch ? 'Skipped'
+                        : (type === 'lunch' && dayPlan?.orderedLunch) || (type === 'dinner' && dayPlan?.orderedDinner) ? 'Order food'
+                        : dayPlan?.[type]?.name || 'Not planned';
                     row.append(label, document.createTextNode(name));
                     day.appendChild(row);
                 });

@@ -31,7 +31,7 @@ A lightweight, single-page web application for family meal planning with intelli
 - **Find Recipes** - Search the MyPlate.food collection by ingredient, with linked results and estimated difficulty
 - **Partial Regeneration** - Regenerate just breakfast, lunch, dinner, or a specific day
 - **Custom Rules** - Create your own meal planning rules
-- **School Lunch Support** - Choose school lunch separately for each day in the weekly planner
+- **School Lunch Support** - Choose school lunch separately on weekdays in the weekly planner
 - **Settings** - Customize meal planning parameters
 - **Export/Import** - Export component details and recipes as JSON
 - **Component Combinations** - Breakfast combines a breakfast component and fruit; lunch and dinner combine protein, starch and vegetables (school lunches are skipped).
@@ -190,10 +190,12 @@ The repeat rule is strict when enabled, so it has an on/off switch rather than a
 
 - **Cuisine Balance** shows flags for recognized national cuisines and a house for Home; other cuisine labels remain unchanged. Flag images are from [flag-icons](https://github.com/lipis/flag-icons) under the [MIT license](assets/flags/LICENSE).
 - **Regenerate** individual meal types or days
-- **Clear Plan** removes meals and school-lunch selections for the open week after confirmation. The week becomes a draft; history and other weeks remain unchanged.
+- **Clear Plan** removes meals, school-lunch selections, skipped lunches and ordering selections for the open week after confirmation. The week becomes a draft; history and other weeks remain unchanged.
 - **Add or replace** individual components with their **+** buttons
 - Mark a component **Weekend only** to prioritize it in automatic generation on Saturday and Sunday and exclude it on weekdays. Eligible combinations with more weekend-only components take priority; repeat rules and pairings still apply. It can still be selected manually on weekdays.
-- **Choose school lunch per day** with the checkbox in each day's planner card
+- **Choose school lunch per weekday** with the checkbox in each weekday's planner card. Previously saved weekend school lunches can be removed from the planner. Turning school lunch off generates a lunch when possible.
+- **Skip lunch** separately on Saturday or Sunday. Selecting it removes that day's planned lunch and generation leaves the slot empty. Turning it off generates a lunch when possible.
+- **Order food** for lunch, dinner or both on Friday, Saturday and Sunday. Each selection removes the corresponding planned meal; generation leaves it empty and its ingredients are excluded from newly generated shopping lists. Turning it off generates a new meal for that slot when possible.
 - The **Limit repeated components** rule prevents breakfast components from repeating within the week. A protein may appear on two consecutive days in different meal slots (lunch then dinner, or dinner then lunch), but cannot appear again that week.
 - Fruit cannot repeat in different meal slots on the same day or on consecutive days, except for consecutive meal prep up to the configured limit. Starch and vegetables can repeat; protein pairings still apply, and the food-group preference may affect scoring. The rule may leave slots empty; manual choices can override it.
 - The **Vary starches and vegetables** preference favors sides used less often in the selected week. It does not prohibit repeats; change its strength or switch it off under Rules.

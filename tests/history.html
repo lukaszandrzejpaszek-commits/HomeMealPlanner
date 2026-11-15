@@ -256,6 +256,118 @@
                 assert(savedHistory['2026-W47'].weekStartDate === '2026-11-17' &&
                     savedHistory['2026-W47#2'].weekStartDate === '2026-11-16',
                     'A key collision must not overwrite an entry for different dates');
+
+                window.storage.set('settings', { planningStartDay: 'Saturday' });
+                window.planner = new window.planner.constructor(window.storage, window.repository, window.ruleEngine);
+                window.planner.setTargetWeek('2027-W01');
+                const refresh = ui.displayCurrentWeek;
+                ui.displayCurrentWeek = () => {};
+                const blank = window.planner.getCurrentWeek().plan;
+                const saturdayCard = ui.createDayCard('Saturday', 0, blank.Saturday, 'Jan 9');
+                const sundayCard = ui.createDayCard('Sunday', 1, blank.Sunday, 'Jan 10');
+                const fridayCard = ui.createDayCard('Friday', 6, blank.Friday, 'Jan 15');
+                const mondayCard = ui.createDayCard('Monday', 2, blank.Monday, 'Jan 11');
+                const testCards = document.createElement('div');
+                testCards.append(saturdayCard, sundayCard, fridayCard, mondayCard);
+                document.body.appendChild(testCards);
+                assert(!saturdayCard.textContent.includes('School lunch') && !sundayCard.textContent.includes('School lunch') &&
+                    mondayCard.textContent.includes('School lunch') &&
+                    saturdayCard.querySelector('[aria-label="Skip lunch on Saturday"]') &&
+                    sundayCard.querySelector('[aria-label="Skip lunch on Sunday"]') &&
+                    fridayCard.querySelectorAll('input[aria-label^="Order "]').length === 2 &&
+                    !mondayCard.querySelector('input[aria-label^="Order "]'),
+                    'School lunch must be weekday-only and ordering controls must appear only for Friday through Sunday');
+                saturdayCard.querySelector('[aria-label="Skip lunch on Saturday"]').click();
+                sundayCard.querySelector('[aria-label="Order lunch on Sunday"]').click();
+                sundayCard.querySelector('[aria-label="Order dinner on Sunday"]').click();
+                fridayCard.querySelector('[aria-label="Order dinner on Friday"]').click();
+                let selected = window.planner.getCurrentWeek().plan;
+                assert(selected.Saturday.skipLunch && !selected.Sunday.skipLunch &&
+                    selected.Sunday.orderedLunch && selected.Sunday.orderedDinner && selected.Friday.orderedDinner,
+                    'Independent UI selections must persist to the correct days and meals');
+                assert(ui.getEmptySlotsMessage({
+                    Saturday: { breakfast: {}, lunch: null, dinner: null, skipLunch: true, orderedDinner: true },
+                    Sunday: { breakfast: {}, lunch: null, dinner: null, orderedLunch: true, orderedDinner: true }
+                }) === '', 'Intentionally excluded meals must not be reported as missing');
+                window.planner.approvePlan();
+                const selectedKey = window.planner.getCurrentWeekInfo().weekKey;
+                const savedSelection = window.storage.get('history')[selectedKey];
+                assert(savedSelection.plan.Saturday.skipLunch && savedSelection.plan.Sunday.orderedLunch &&
+                    savedSelection.plan.Sunday.orderedDinner && savedSelection.plan.Friday.orderedDinner,
+                    'Approval must persist skip and ordering choices in history');
+                const selectionHistory = ui.createHistoryItem(savedSelection);
+                const selectionDays = selectionHistory.querySelectorAll('.history-day-preview');
+                assert(selectionDays[0].textContent.includes('Lunch: Skipped') &&
+                    selectionDays[1].textContent.includes('Lunch: Order food') &&
+                    selectionDays[1].textContent.includes('Dinner: Order food'),
+                    'History must distinguish skipped and ordered meals');
+                window.planner.editHistoryEntry(selectedKey);
+                assert(window.planner.getCurrentWeek().plan.Sunday.orderedDinner,
+                    'Editing history must restore ordering selections');
+                const orderedCard = ui.createDayCard('Sunday', 1, window.planner.getCurrentWeek().plan.Sunday, 'Jan 10');
+                testCards.appendChild(orderedCard);
+                const previousAlert = window.alert;
+                let message = '';
+                window.alert = text => { message = text; };
+                orderedCard.querySelector('[aria-label="Order lunch on Sunday"]').click();
+                assert(!window.planner.getCurrentWeek().plan.Sunday.orderedLunch &&
+                    !window.planner.getCurrentWeek().plan.Sunday.lunch &&
+                    message.includes('No meal could be generated for Sunday lunch'),
+                    'Unchecking ordering must report when no meal can be generated');
+                const skippedCard = ui.createDayCard('Saturday', 0, window.planner.getCurrentWeek().plan.Saturday, 'Jan 9');
+                testCards.appendChild(skippedCard);
+                message = '';
+                skippedCard.querySelector('[aria-label="Skip lunch on Saturday"]').click();
+                assert(!window.planner.getCurrentWeek().plan.Saturday.skipLunch &&
+                    !window.planner.getCurrentWeek().plan.Saturday.lunch &&
+                    message.includes('No meal could be generated for Saturday lunch'),
+                    'Unchecking skipped lunch must report when no meal can be generated');
+                window.planner.setSchoolLunch(6, true);
+                const schoolCard = ui.createDayCard('Friday', 6, window.planner.getCurrentWeek().plan.Friday, 'Jan 15');
+                testCards.appendChild(schoolCard);
+                message = '';
+                [...schoolCard.querySelectorAll('label')].find(label => label.textContent === 'School lunch')
+                    .querySelector('input').click();
+                assert(!window.planner.getCurrentWeek().plan.Friday.schoolLunch &&
+                    !window.planner.getCurrentWeek().plan.Friday.lunch &&
+                    message.includes('No meal could be generated for Friday lunch'),
+                    'Unchecking school lunch must report when no meal can be generated');
+                window.planner.setSchoolLunch(0, true);
+                const legacyCard = ui.createDayCard('Saturday', 0, window.planner.getCurrentWeek().plan.Saturday, 'Jan 9');
+                testCards.appendChild(legacyCard);
+                assert(![...legacyCard.querySelectorAll('label')].some(label => label.textContent.includes('School lunch')) &&
+                    legacyCard.textContent.includes('Remove previous school lunch'),
+                    'Existing weekend school lunch must remain visible and removable');
+                [...legacyCard.querySelectorAll('button')].find(button => button.textContent === 'Remove previous school lunch').click();
+                assert(!window.planner.getCurrentWeek().plan.Saturday.schoolLunch,
+                    'Removing a legacy weekend school lunch must persist');
+                window.storage.set('rules', []);
+                window.repository.addMeal({ name: 'Test protein', mealTypes: ['Lunch', 'Dinner'], categories: ['Protein'] });
+                window.repository.addMeal({ name: 'Test starch', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'] });
+                window.repository.addMeal({ name: 'Test vegetable', mealTypes: ['Lunch', 'Dinner'], categories: ['Vegetables'] });
+                window.planner.setOrderedMeal(1, 'dinner', true);
+                const restoreOrderCard = ui.createDayCard('Sunday', 1, window.planner.getCurrentWeek().plan.Sunday, 'Jan 10');
+                testCards.appendChild(restoreOrderCard);
+                message = '';
+                restoreOrderCard.querySelector('[aria-label="Order dinner on Sunday"]').click();
+                assert(window.planner.getCurrentWeek().plan.Sunday.dinner && !message,
+                    'Unchecking ordering must generate a meal without an error when one is available');
+                window.planner.setSkipLunch(0, true);
+                const restoreSkipCard = ui.createDayCard('Saturday', 0, window.planner.getCurrentWeek().plan.Saturday, 'Jan 9');
+                testCards.appendChild(restoreSkipCard);
+                restoreSkipCard.querySelector('[aria-label="Skip lunch on Saturday"]').click();
+                assert(window.planner.getCurrentWeek().plan.Saturday.lunch && !message,
+                    'Unchecking skip lunch must generate a meal when one is available');
+                window.planner.setSchoolLunch(6, true);
+                const restoreSchoolCard = ui.createDayCard('Friday', 6, window.planner.getCurrentWeek().plan.Friday, 'Jan 15');
+                testCards.appendChild(restoreSchoolCard);
+                [...restoreSchoolCard.querySelectorAll('label')].find(label => label.textContent === 'School lunch')
+                    .querySelector('input').click();
+                assert(window.planner.getCurrentWeek().plan.Friday.lunch && !message,
+                    'Unchecking school lunch must generate a meal when one is available');
+                window.alert = previousAlert;
+                testCards.remove();
+                ui.displayCurrentWeek = refresh;
                 document.getElementById('result').textContent = 'All history display tests passed.';
             } catch (error) {
                 document.getElementById('result').textContent = `FAILED: ${error.message}`;

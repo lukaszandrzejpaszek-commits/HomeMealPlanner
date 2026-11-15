@@ -68,7 +68,9 @@
             name: 'Toast', mealTypes: ['Breakfast'], categories: ['Breakfast']
         });
         weekendRepo.addMeal({ name: 'Apple', mealTypes: ['Breakfast'], categories: ['Fruit'] });
-        weekendRepo.addMeal({ name: 'Chicken', mealTypes: ['Lunch', 'Dinner'], categories: ['Protein'] });
+        const weekendChicken = weekendRepo.addMeal({
+            name: 'Chicken', mealTypes: ['Lunch', 'Dinner'], categories: ['Protein'], ingredients: ['Chicken']
+        });
         const weekendStarch = weekendRepo.addMeal({
             name: 'Potatoes', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'], weekendOnly: true
         });
@@ -139,10 +141,110 @@
         assert(weekendRepo.getMeal(pancakes.id).weekendOnly,
             'The weekend restriction must survive meal export and import');
 
+        const friday = weekendPlanner.days.indexOf('Friday');
+        weekendPlanner.setSkipLunch(0, true);
+        assert(!weekendPlanner.getCurrentWeek().plan.Saturday.lunch &&
+            !weekendPlanner.getCurrentWeek().plan.Sunday.skipLunch,
+            'Skipping Saturday lunch must clear it without changing Sunday');
+        weekendPlanner.setOrderedMeal(1, 'lunch', true);
+        weekendPlanner.setOrderedMeal(1, 'dinner', true);
+        weekendPlanner.setOrderedMeal(friday, 'lunch', true);
+        weekendPlanner.setOrderedMeal(friday, 'dinner', true);
+        let excluded = weekendPlanner.generateWeekPlan();
+        assert(excluded.Saturday.skipLunch && !excluded.Saturday.lunch && excluded.Saturday.dinner &&
+            excluded.Sunday.orderedLunch && excluded.Sunday.orderedDinner &&
+            !excluded.Sunday.lunch && !excluded.Sunday.dinner && excluded.Sunday.breakfast &&
+            excluded.Friday.orderedLunch && excluded.Friday.orderedDinner &&
+            !excluded.Friday.lunch && !excluded.Friday.dinner,
+            'Full generation must preserve independent skip and order selections while still planning other meals');
+        weekendPlanner.regenerateMealType('lunch');
+        weekendPlanner.regenerateMealType('dinner');
+        excluded = weekendPlanner.regenerateDay(1);
+        assert(!excluded.Saturday.lunch && !excluded.Sunday.lunch && !excluded.Sunday.dinner &&
+            !excluded.Friday.dinner && excluded.Sunday.breakfast,
+            'Meal-type and day regeneration must not fill excluded meals');
+        const reopenedSelections = new window.planner.constructor(weekendStorage, weekendRepo, ruleStub);
+        assert(reopenedSelections.getCurrentWeek().plan.Saturday.skipLunch &&
+            reopenedSelections.getCurrentWeek().plan.Sunday.orderedLunch &&
+            reopenedSelections.getCurrentWeek().plan.Friday.orderedDinner,
+            'Lunch and ordering selections must survive reopening');
+        let blockedComponent = false;
+        let blockedReplacement = false;
+        try { weekendPlanner.setMealComponent(1, 'dinner', 'protein', weekendChicken.id); } catch (error) { blockedComponent = true; }
+        try { weekendPlanner.replaceMeal(1, 'lunch', weekendRepo.getPlanningMealsByType('Lunch')[0].id); } catch (error) { blockedReplacement = true; }
+        assert(blockedComponent && blockedReplacement, 'Ordered meals must reject manual changes');
+        let blockedSkip = false;
+        try { weekendPlanner.setMealComponent(0, 'lunch', 'protein', weekendChicken.id); } catch (error) { blockedSkip = true; }
+        assert(blockedSkip, 'Skipped lunches must reject manual changes');
+        const beforeUnorder = weekendPlanner.getCurrentWeek().plan;
+        const unOrderedLunch = weekendPlanner.setOrderedMeal(1, 'lunch', false);
+        assert(unOrderedLunch.Sunday.lunch && !unOrderedLunch.Sunday.orderedLunch &&
+            unOrderedLunch.Sunday.orderedDinner && !unOrderedLunch.Sunday.dinner &&
+            JSON.stringify(unOrderedLunch.Saturday) === JSON.stringify(beforeUnorder.Saturday) &&
+            weekendPlanner.getCurrentWeek().plan.Sunday.lunch.id === unOrderedLunch.Sunday.lunch.id,
+            'Turning off ordering must generate and persist only the chosen meal');
+        const unavailable = weekendPlanner.setOrderedMeal(friday, 'dinner', false);
+        assert(!unavailable.Friday.orderedDinner && !unavailable.Friday.dinner &&
+            unavailable.Friday.orderedLunch,
+            'Turning off ordering must leave the slot empty when no eligible meal is available');
+        weekendPlanner.setOrderedMeal(friday, 'dinner', true);
+        weekendPlanner.setSkipLunch(1, true);
+        weekendPlanner.setOrderedMeal(1, 'lunch', true);
+        assert(!weekendPlanner.getCurrentWeek().plan.Sunday.skipLunch,
+            'Ordering lunch must turn off skip lunch');
+        weekendPlanner.setSkipLunch(1, true);
+        assert(!weekendPlanner.getCurrentWeek().plan.Sunday.orderedLunch,
+            'Skipping lunch must turn off ordering lunch');
+        excluded = weekendPlanner.regenerateDay(1);
+        assert(excluded.Sunday.skipLunch && !excluded.Sunday.lunch && !excluded.Sunday.dinner,
+            'Sunday lunch can be skipped independently of ordering dinner');
+        const restoredSkipped = weekendPlanner.setSkipLunch(0, false);
+        assert(restoredSkipped.Saturday.lunch && !restoredSkipped.Saturday.skipLunch &&
+            restoredSkipped.Sunday.skipLunch && restoredSkipped.Sunday.orderedDinner,
+            'Turning off skip lunch must generate only the selected lunch');
+        weekendPlanner.setSchoolLunch(friday, true);
+        weekendPlanner.setOrderedMeal(friday, 'lunch', true);
+        assert(!weekendPlanner.getCurrentWeek().plan.Friday.schoolLunch,
+            'Ordering lunch must turn off school lunch');
+        weekendPlanner.setSchoolLunch(friday, true);
+        assert(!weekendPlanner.getCurrentWeek().plan.Friday.orderedLunch,
+            'Selecting school lunch must turn off ordering lunch');
+        weekendRepo.addMeal({ name: 'Rice', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'] });
+        const restoredSchool = weekendPlanner.setSchoolLunch(friday, false);
+        assert(restoredSchool.Friday.lunch && !restoredSchool.Friday.schoolLunch &&
+            restoredSchool.Friday.orderedDinner,
+            'Turning off school lunch must generate lunch without changing dinner');
+        let rejectedInvalid = 0;
+        for (const [index, type] of [[2, 'lunch'], [0, 'breakfast']]) {
+            try { weekendPlanner.setOrderedMeal(index, type, true); } catch (error) { rejectedInvalid++; }
+        }
+        try { weekendPlanner.setSkipLunch(friday, true); } catch (error) { rejectedInvalid++; }
+        assert(rejectedInvalid === 3, 'Ordering and skipping must reject unsupported days and meals');
+        weekendPlanner.clearPlan();
+        weekendPlanner.setMealComponent(0, 'dinner', 'protein', weekendChicken.id);
+        const weekendShopping = new window.shoppingManager.constructor(weekendStorage, weekendRepo);
+        assert(weekendShopping.generateShoppingList().some(item => item.name === 'Chicken'),
+            'The planned meal must contribute ingredients before ordering');
+        weekendPlanner.setOrderedMeal(0, 'dinner', true);
+        assert(!weekendShopping.generateShoppingList().some(item => item.name === 'Chicken'),
+            'An ordered meal must not contribute ingredients to a regenerated shopping list');
+        const strictPlanner = new window.planner.constructor(weekendStorage, weekendRepo, {
+            getRules: () => [{ id: 'component-repeat-policy', enabled: true }],
+            applyRule: () => 0,
+            scoreMealPlacement: () => 1
+        });
+        strictPlanner.setSkipLunch(0, true);
+        const rejectedByRules = strictPlanner.setSkipLunch(0, false);
+        assert(!rejectedByRules.Saturday.lunch && !rejectedByRules.Saturday.skipLunch &&
+            rejectedByRules.Saturday.orderedDinner,
+            'Restoring a lunch must respect mandatory rules and preserve other exclusions');
+
         const beforeClear = weekendPlanner.getCurrentWeek();
         beforeClear.status = 'Approved';
         beforeClear.approvedDate = '2026-01-01T00:00:00Z';
         beforeClear.plan.Monday.schoolLunch = true;
+        beforeClear.plan.Sunday.skipLunch = true;
+        beforeClear.plan.Friday.orderedLunch = true;
         beforeClear.editingHistoryKey = 'approved';
         weekendPlanner.saveCurrentWeek(beforeClear);
         const otherWeek = { plan: 'other week', status: 'Approved' };
@@ -150,7 +252,8 @@
         const selectedWeek = weekendPlanner.getCurrentWeekInfo().weekKey;
         const clearedPlan = weekendPlanner.clearPlan();
         assert(Object.values(clearedPlan).every(day =>
-            !day.breakfast && !day.lunch && !day.dinner && !day.schoolLunch) &&
+            !day.breakfast && !day.lunch && !day.dinner && !day.schoolLunch &&
+            !day.skipLunch && !day.orderedLunch && !day.orderedDinner) &&
             weekendPlanner.getCurrentWeek().status === 'Draft' &&
             !weekendPlanner.getCurrentWeek().approvedDate &&
             weekendPlanner.getCurrentWeek().editingHistoryKey === 'approved' &&

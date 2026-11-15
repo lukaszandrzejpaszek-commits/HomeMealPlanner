@@ -48,8 +48,10 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 ### Planning
 - **View or replace a component**: Click a planned component to see its recipes, or its **+** button to choose another
 - **Regenerate day**: Generate plan > Regenerate individual meals
-- **Clear plan**: Use **Clear Plan** to remove the open week's meals and school-lunch selections. The plan becomes a draft; approved history stays intact.
-- **School lunch**: Choose school lunch separately on each day in the planner
+- **Clear plan**: Use **Clear Plan** to remove the open week's meals, school-lunch selections, skipped lunches and ordering selections. The plan becomes a draft; approved history stays intact.
+- **School lunch**: Choose school lunch separately on weekdays. Previously saved weekend school lunches can be removed from the planner. Uncheck to generate a lunch when possible.
+- **Weekend lunch**: Choose **Skip lunch** separately on Saturday or Sunday. This removes any planned lunch and keeps it empty during generation; uncheck it to generate a lunch when possible.
+- **Order food**: Select lunch, dinner or both separately on Friday, Saturday and Sunday. The planned meal is removed; uncheck to generate a new meal for that slot when possible. Generate a new shopping list after changing the plan.
 - **Future week**: Select a later week to generate and save a separate plan
 - **Meal components**: Breakfast combines a Breakfast component and fruit; lunch and dinner combine protein, starch and vegetables. Assign the Breakfast category and meal type to components you want in the breakfast slot. Use the **+** buttons to fill a row manually; manual choices can override repeat rules.
 - **Weekend only**: Enable this on a component to prioritize it automatically on Saturday and Sunday and exclude it on weekdays. Eligible combinations with more weekend-only components take priority. Manual weekday selection is still allowed.
@@ -92,7 +94,7 @@ Examples:
 - Cook for X days
 - History weeks to avoid
 - Optional HTTPS recipe import proxy URL
-- Choose school lunch separately for each day in the planner
+- Choose school lunch separately for each weekday in the planner
 - Dark mode toggle
 
 ### Backup & Restore

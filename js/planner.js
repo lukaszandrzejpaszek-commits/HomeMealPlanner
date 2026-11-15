@@ -41,6 +41,9 @@ class Planner {
         if (previousPlan) {
             this.days.forEach(day => {
                 plan[day].schoolLunch = Boolean(previousPlan[day]?.schoolLunch);
+                plan[day].skipLunch = Boolean(previousPlan[day]?.skipLunch);
+                plan[day].orderedLunch = Boolean(previousPlan[day]?.orderedLunch);
+                plan[day].orderedDinner = Boolean(previousPlan[day]?.orderedDinner);
             });
         }
 
@@ -58,7 +61,7 @@ class Planner {
             }
 
             // Lunch
-            if (dayPlan.schoolLunch) {
+            if (this.isMealExcluded(dayPlan, 'lunch')) {
                 dayPlan.lunch = null;
             } else if (mealsByType.lunch.length > 0) {
                 const lunch = this.selectBestMeal(mealsByType.lunch, plan, dayIndex, 'lunch');
@@ -68,7 +71,7 @@ class Planner {
             }
 
             // Dinner
-            if (mealsByType.dinner.length > 0) {
+            if (!this.isMealExcluded(dayPlan, 'dinner') && mealsByType.dinner.length > 0) {
                 const dinner = this.selectBestMeal(mealsByType.dinner, plan, dayIndex, 'dinner');
                 if (dinner) {
                     dayPlan.dinner = dinner;
@@ -99,14 +102,14 @@ class Planner {
         const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType));
 
         this.days.forEach(day => {
-            if (mealType !== 'lunch' || !plan[day].schoolLunch) plan[day][mealType] = null;
+            plan[day][mealType] = null;
         });
 
         for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
             const day = this.days[dayIndex];
             const dayPlan = plan[day];
 
-            if (mealType === 'lunch' && dayPlan.schoolLunch) {
+            if (this.isMealExcluded(dayPlan, mealType)) {
                 continue;
             }
 
@@ -133,7 +136,7 @@ class Planner {
 
         this.mealTypes.forEach(type => { dayPlan[type] = null; });
         for (const mealType of this.mealTypes) {
-            if (mealType === 'lunch' && dayPlan.schoolLunch) {
+            if (this.isMealExcluded(dayPlan, mealType)) {
                 continue;
             }
 
@@ -154,6 +157,19 @@ class Planner {
         this.markWeekDraft(currentWeek);
         this.saveCurrentWeek(currentWeek);
         return currentWeek.plan;
+    }
+
+    isMealExcluded(dayPlan, mealType) {
+        return (mealType === 'lunch' && (dayPlan.schoolLunch || dayPlan.skipLunch || dayPlan.orderedLunch)) ||
+            (mealType === 'dinner' && dayPlan.orderedDinner);
+    }
+
+    regenerateUnexcludedMeal(plan, dayIndex, mealType) {
+        const dayPlan = plan[this.days[dayIndex]];
+        if (this.isMealExcluded(dayPlan, mealType)) return;
+        dayPlan[mealType] = null;
+        const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType));
+        dayPlan[mealType] = this.selectBestMeal(meals, plan, dayIndex, mealType);
     }
 
     isMealAvailableOnDay(meal, dayIndex) {
@@ -205,6 +221,9 @@ class Planner {
 
         const plan = currentWeek.plan;
         const day = this.days[dayIndex];
+        if (this.isMealExcluded(plan[day], mealType)) {
+            throw new Error('Turn off the lunch or ordering selection before adding a meal.');
+        }
         const meal = this.repository.getPlanningMealsByType(this.capitalize(mealType))
             .find(candidate => candidate.id === newMealId);
 
@@ -229,8 +248,8 @@ class Planner {
         if (!component) throw new Error('This component is no longer available for this meal.');
 
         const currentWeek = this.storage.get('current-week') || this.createWeekRecord(this.initializeEmptyPlan());
-        if (mealType === 'lunch' && currentWeek.plan[day].schoolLunch) {
-            throw new Error('Turn off school lunch before adding components.');
+        if (this.isMealExcluded(currentWeek.plan[day], mealType)) {
+            throw new Error('Turn off the lunch or ordering selection before adding components.');
         }
         const previousMeal = currentWeek.plan[day][mealType];
         const omitted = Object.fromEntries((previousMeal?.omittedComponents || [])
@@ -258,9 +277,58 @@ class Planner {
             throw new Error('Invalid planner day');
         }
 
+        const wasSchoolLunch = Boolean(currentWeek.plan[day].schoolLunch);
         currentWeek.plan[day].schoolLunch = Boolean(enabled);
         if (enabled) {
+            currentWeek.plan[day].skipLunch = false;
+            currentWeek.plan[day].orderedLunch = false;
             currentWeek.plan[day].lunch = null;
+        } else if (wasSchoolLunch) {
+            this.regenerateUnexcludedMeal(currentWeek.plan, dayIndex, 'lunch');
+        }
+        this.markWeekDraft(currentWeek);
+        this.saveCurrentWeek(currentWeek);
+        return currentWeek.plan;
+    }
+
+    setSkipLunch(dayIndex, enabled) {
+        const day = this.days[dayIndex];
+        if (day !== 'Saturday' && day !== 'Sunday') {
+            throw new Error('Lunch can only be skipped this way on Saturday or Sunday.');
+        }
+        const currentWeek = this.getCurrentWeek() || this.createWeekRecord(this.initializeEmptyPlan());
+        const wasSkipped = Boolean(currentWeek.plan[day].skipLunch);
+        currentWeek.plan[day].skipLunch = Boolean(enabled);
+        if (enabled) {
+            currentWeek.plan[day].schoolLunch = false;
+            currentWeek.plan[day].orderedLunch = false;
+            currentWeek.plan[day].lunch = null;
+        } else if (wasSkipped) {
+            this.regenerateUnexcludedMeal(currentWeek.plan, dayIndex, 'lunch');
+        }
+        this.markWeekDraft(currentWeek);
+        this.saveCurrentWeek(currentWeek);
+        return currentWeek.plan;
+    }
+
+    setOrderedMeal(dayIndex, mealType, enabled) {
+        const day = this.days[dayIndex];
+        if (!['Friday', 'Saturday', 'Sunday'].includes(day) || !['lunch', 'dinner'].includes(mealType)) {
+            throw new Error('Ordering is only available for lunch or dinner on Friday, Saturday or Sunday.');
+        }
+        const currentWeek = this.getCurrentWeek() || this.createWeekRecord(this.initializeEmptyPlan());
+        const dayPlan = currentWeek.plan[day];
+        const orderKey = mealType === 'lunch' ? 'orderedLunch' : 'orderedDinner';
+        const wasOrdered = Boolean(dayPlan[orderKey]);
+        dayPlan[orderKey] = Boolean(enabled);
+        if (enabled) {
+            dayPlan[mealType] = null;
+            if (mealType === 'lunch') {
+                dayPlan.schoolLunch = false;
+                dayPlan.skipLunch = false;
+            }
+        } else if (wasOrdered) {
+            this.regenerateUnexcludedMeal(currentWeek.plan, dayIndex, mealType);
         }
         this.markWeekDraft(currentWeek);
         this.saveCurrentWeek(currentWeek);
@@ -514,7 +582,10 @@ class Planner {
                 breakfast: null,
                 lunch: null,
                 dinner: null,
-                schoolLunch: false
+                schoolLunch: false,
+                skipLunch: false,
+                orderedLunch: false,
+                orderedDinner: false
             };
         }
 
