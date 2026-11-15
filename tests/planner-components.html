@@ -504,8 +504,60 @@
         assert(withSide.componentItems.starch.id === side.id &&
             !withSide.omittedComponents.includes('starch') && withSide.omittedComponents.includes('vegetable'),
             'Manually adding a side must clear its omission while preserving other omissions');
+        const sideRemoved = noSidesPlanner.removeMealComponent(0, 'lunch', 'starch');
+        assert(!sideRemoved.componentItems.starch && !sideRemoved.omittedComponents.includes('starch') &&
+            sideRemoved.omittedComponents.includes('vegetable'),
+            'Removing a component must leave that slot empty and preserve unrelated omissions');
         assert(noSidesRepo.getPlanningMealsByType('Lunch').every(item => !item.componentItems.starch),
             'Selecting only no starch must not generate a starch even when one exists');
+
+        const removalData = {
+            meals: [], recipes: [], 'meal-components': { proteins: [], starches: [], vegetables: [] }
+        };
+        const removalStorage = {
+            get(key, fallback) { return removalData[key] === undefined ? fallback : structuredClone(removalData[key]); },
+            set(key, value) { removalData[key] = structuredClone(value); }
+        };
+        const removalRepo = new window.repository.constructor(removalStorage);
+        const removalPlanner = new window.planner.constructor(removalStorage, removalRepo, ruleStub);
+        const shared = removalRepo.addMeal({
+            name: 'Stew', mealTypes: ['Lunch', 'Dinner'], categories: ['Protein', 'Vegetables'],
+            ingredients: ['Beans'], cuisine: 'Mexican', protein: 'Vegetarian'
+        });
+        const removalRice = removalRepo.addMeal({
+            name: 'Rice', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'], ingredients: ['Rice']
+        });
+        for (const type of ['lunch', 'dinner']) {
+            removalPlanner.setMealComponent(0, type, 'protein', shared.id);
+            removalPlanner.setMealComponent(0, type, 'vegetable', shared.id);
+            removalPlanner.setMealComponent(0, type, 'starch', removalRice.id);
+        }
+        const otherDinner = JSON.stringify(removalPlanner.getCurrentWeek().plan[removalPlanner.days[0]].dinner);
+        const removedProtein = removalPlanner.removeMealComponent(0, 'lunch', 'protein');
+        assert(!removedProtein.componentItems.protein && removedProtein.componentItems.vegetable.id === shared.id &&
+            removedProtein.componentItems.starch.id === removalRice.id && removedProtein.protein === 'N/A' &&
+            removedProtein.ingredients.includes('Beans') &&
+            JSON.stringify(removalPlanner.getCurrentWeek().plan[removalPlanner.days[0]].dinner) === otherDinner,
+            'Removing protein must recalculate the meal without changing other slots or meals');
+        const removedVegetable = removalPlanner.removeMealComponent(0, 'lunch', 'vegetable');
+        assert(!removedVegetable.ingredients.includes('Beans') && removedVegetable.ingredients.includes('Rice'),
+            'A removed component must no longer contribute ingredients once its last slot is removed');
+        const removedDinnerStarch = removalPlanner.removeMealComponent(0, 'dinner', 'starch');
+        assert(!removedDinnerStarch.componentItems.starch && !removedDinnerStarch.ingredients.includes('Rice'),
+            'Starch can be removed from dinner without removing the other components');
+        const removalShopping = new window.shoppingManager.constructor(removalStorage, removalRepo);
+        assert(removalShopping.generateShoppingList().some(item => item.name === 'Rice'),
+            'Ingredients from remaining components must stay on the shopping list');
+        assert(removalPlanner.removeMealComponent(0, 'lunch', 'starch') === null &&
+            !removalPlanner.getCurrentWeek().plan[removalPlanner.days[0]].lunch &&
+            !removalShopping.generateShoppingList().some(item => item.name === 'Rice'),
+            'Removing the final component must clear the meal and remove its ingredients from a new shopping list');
+        assert(removalPlanner.setMealComponent(0, 'lunch', 'protein', shared.id).componentItems.protein.id === shared.id,
+            'A component can be added back after clearing a meal');
+        let invalidRemovalRejected = false;
+        try { removalPlanner.removeMealComponent(0, 'lunch', 'vegetable'); } catch (error) { invalidRemovalRejected = true; }
+        assert(invalidRemovalRejected && removalPlanner.getCurrentWeek().plan[removalPlanner.days[0]].lunch,
+            'Removing an empty slot must report an error without changing the meal');
 
         const sharedRice = {
             id: 'other', componentItems: {

@@ -262,6 +262,31 @@ class Planner {
         return currentWeek.plan[day][mealType];
     }
 
+    removeMealComponent(dayIndex, mealType, slotKey) {
+        const day = this.days[dayIndex];
+        if (!day || !['lunch', 'dinner'].includes(mealType)) throw new Error('Invalid planner slot.');
+        const type = this.capitalize(mealType);
+        const slots = this.repository.getMealSlots(type);
+        if (!slots.some(slot => slot.key === slotKey)) throw new Error('Invalid component category.');
+        const currentWeek = this.getCurrentWeek();
+        const dayPlan = currentWeek?.plan?.[day];
+        const meal = dayPlan?.[mealType];
+        if (!meal?.componentItems?.[slotKey]) throw new Error('This component is no longer in the meal.');
+        if (this.isMealExcluded(dayPlan, mealType)) {
+            throw new Error('Turn off the lunch or ordering selection before changing components.');
+        }
+        const omitted = Object.fromEntries((meal.omittedComponents || [])
+            .filter(key => slots.some(slot => slot.key === key))
+            .map(key => [key, null]));
+        const items = { ...omitted, ...meal.componentItems };
+        delete items[slotKey];
+        dayPlan[mealType] = slots.some(slot => items[slot.key])
+            ? this.repository.createComponentMeal(type, items) : null;
+        this.markWeekDraft(currentWeek);
+        this.saveCurrentWeek(currentWeek);
+        return dayPlan[mealType];
+    }
+
     setSchoolLunch(dayIndex, enabled) {
         let currentWeek = this.storage.get('current-week');
         if (!currentWeek) {

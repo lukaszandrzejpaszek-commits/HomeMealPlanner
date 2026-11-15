@@ -46,7 +46,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **Filter**: Filter by type or cuisine
 
 ### Planning
-- **View or replace a component**: Click a planned component to see its recipes, or its **+** button to choose another
+- **View, replace or remove a component**: Click a planned component to see its recipes, use **+** to choose another, or use **×** to remove a protein, starch or vegetable from lunch or dinner. Removing the last component clears that meal; regeneration may fill removed slots again.
 - **Regenerate day**: Generate plan > Regenerate individual meals
 - **Clear plan**: Use **Clear Plan** to remove the open week's meals, school-lunch selections, skipped lunches and ordering selections. The plan becomes a draft; approved history stays intact.
 - **School lunch**: Choose school lunch separately on weekdays. Previously saved weekend school lunches can be removed from the planner. Uncheck to generate a lunch when possible.

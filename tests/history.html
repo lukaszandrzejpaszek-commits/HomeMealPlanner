@@ -13,6 +13,7 @@
 </script>
 <script src="../js/storage.js"></script>
 <script src="../js/repository.js"></script>
+<script src="../js/recipes.js"></script>
 <script src="../js/rules.js"></script>
 <script src="../js/planner.js"></script>
 <script src="../js/history.js"></script>
@@ -365,6 +366,26 @@
                     .querySelector('input').click();
                 assert(window.planner.getCurrentWeek().plan.Friday.lunch && !message,
                     'Unchecking school lunch must generate a meal when one is available');
+                window.planner.approvePlan();
+                const approvedBeforeRemoval = JSON.stringify(window.storage.get('history')[selectedKey].plan.Friday.lunch);
+                const removalCard = ui.createDayCard('Friday', 6, window.planner.getCurrentWeek().plan.Friday, 'Jan 15');
+                testCards.appendChild(removalCard);
+                assert(removalCard.querySelector('[aria-label="Remove Protein from Friday lunch"]') &&
+                    removalCard.querySelector('[aria-label="Remove Starch from Friday lunch"]') &&
+                    removalCard.querySelector('[aria-label="Remove Vegetables from Friday lunch"]') &&
+                    !removalCard.querySelector('[aria-label^="Remove Breakfast"]'),
+                    'Filled lunch components must have accessible removal controls');
+                removalCard.querySelector('[aria-label="Remove Protein from Friday lunch"]').click();
+                const afterRemoval = window.planner.getCurrentWeek();
+                assert(afterRemoval.status === 'Draft' && !afterRemoval.plan.Friday.lunch.componentItems.protein &&
+                    afterRemoval.plan.Friday.lunch.componentItems.starch &&
+                    afterRemoval.plan.Friday.lunch.componentItems.vegetable &&
+                    JSON.stringify(window.storage.get('history')[selectedKey].plan.Friday.lunch) === approvedBeforeRemoval,
+                    'Removing a component must update the draft while leaving approved history unchanged');
+                const updatedCard = ui.createDayCard('Friday', 6, afterRemoval.plan.Friday, 'Jan 15');
+                assert(!updatedCard.querySelector('[aria-label="Remove Protein from Friday lunch"]') &&
+                    updatedCard.querySelector('[aria-label="Add Protein for Friday lunch"]'),
+                    'A removed component must leave an empty slot that can be filled again');
                 window.alert = previousAlert;
                 testCards.remove();
                 ui.displayCurrentWeek = refresh;

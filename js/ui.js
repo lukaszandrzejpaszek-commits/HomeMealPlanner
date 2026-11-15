@@ -399,13 +399,25 @@ class UIManager {
                         omitted.textContent = 'Not needed';
                         component.appendChild(omitted);
                     }
+                    const actions = document.createElement('div');
+                    actions.className = 'planner-component-actions';
                     const add = document.createElement('button');
                     add.type = 'button';
                     add.className = 'btn btn-secondary btn-sm planner-add-component';
                     add.textContent = '+';
                     add.setAttribute('aria-label', `${item ? 'Change' : 'Add'} ${category} for ${dayName} ${mealType}`);
                     add.addEventListener('click', () => this.openMealPicker(dayIndex, mealType, key));
-                    component.appendChild(add);
+                    actions.appendChild(add);
+                    if (item && mealType !== 'breakfast') {
+                        const remove = document.createElement('button');
+                        remove.type = 'button';
+                        remove.className = 'btn btn-danger btn-sm planner-remove-component';
+                        remove.textContent = '×';
+                        remove.setAttribute('aria-label', `Remove ${category} from ${dayName} ${mealType}`);
+                        remove.addEventListener('click', () => this.removeMealComponent(dayIndex, mealType, key));
+                        actions.appendChild(remove);
+                    }
+                    component.appendChild(actions);
                     components.appendChild(component);
                 });
                 mealItem.appendChild(components);
@@ -610,6 +622,20 @@ class UIManager {
         try {
             window.planner.setMealComponent(ctx.dayIndex, ctx.mealType, ctx.slotKey, componentId);
             document.getElementById('meal-picker-modal').classList.remove('active');
+            this.displayCurrentWeek();
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    removeMealComponent(dayIndex, mealType, slotKey) {
+        const day = window.planner.days[dayIndex];
+        const meal = window.planner.getCurrentWeek()?.plan[day]?.[mealType];
+        const slotKeys = window.repository.getMealSlots(mealType).map(slot => slot.key);
+        if (meal?.componentItems && Object.keys(meal.componentItems).some(key => !slotKeys.includes(key)) &&
+            !confirm('This changes an older meal format. Its extra component will be removed. Continue?')) return;
+        try {
+            window.planner.removeMealComponent(dayIndex, mealType, slotKey);
             this.displayCurrentWeek();
         } catch (error) {
             alert(error.message);

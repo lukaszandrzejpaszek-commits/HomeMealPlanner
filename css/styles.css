@@ -446,9 +446,16 @@ body {
     font-weight: 600;
 }
 
-.planner-add-component {
-    min-width: 2rem;
+.planner-component-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
     margin-top: auto;
+}
+
+.planner-add-component,
+.planner-remove-component {
+    min-width: 2rem;
 }
 
 .meal-name {

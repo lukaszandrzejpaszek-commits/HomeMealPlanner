@@ -191,7 +191,7 @@ The repeat rule is strict when enabled, so it has an on/off switch rather than a
 - **Cuisine Balance** shows flags for recognized national cuisines and a house for Home; other cuisine labels remain unchanged. Flag images are from [flag-icons](https://github.com/lipis/flag-icons) under the [MIT license](assets/flags/LICENSE).
 - **Regenerate** individual meal types or days
 - **Clear Plan** removes meals, school-lunch selections, skipped lunches and ordering selections for the open week after confirmation. The week becomes a draft; history and other weeks remain unchanged.
-- **Add or replace** individual components with their **+** buttons
+- **Add or replace** individual components with their **+** buttons. Use **×** to remove a protein, starch or vegetable from lunch or dinner; removing the last component clears that meal. Regeneration may fill removed slots again.
 - Mark a component **Weekend only** to prioritize it in automatic generation on Saturday and Sunday and exclude it on weekdays. Eligible combinations with more weekend-only components take priority; repeat rules and pairings still apply. It can still be selected manually on weekdays.
 - Mark a component **Manual selection only** to exclude it from automatic generation and regeneration while keeping it available in the planner's component picker. This also takes precedence over **Weekend only**.
 - **Choose school lunch per weekday** with the checkbox in each weekday's planner card. Previously saved weekend school lunches can be removed from the planner. Turning school lunch off generates a lunch when possible.
