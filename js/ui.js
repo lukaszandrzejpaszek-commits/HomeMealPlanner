@@ -510,8 +510,9 @@ class UIManager {
         let conflicts = 0;
         let pairings = 0;
         let weekendOnly = 0;
+        let manualOnly = 0;
         const available = Object.fromEntries(mealTypes.map(type =>
-            [type, window.repository.getPlanningMealsByType(type.charAt(0).toUpperCase() + type.slice(1))]
+            [type, window.repository.getPlanningMealsByType(type.charAt(0).toUpperCase() + type.slice(1), { automaticOnly: true })]
         ));
         Object.entries(plan).forEach(([dayName, day]) => {
             mealTypes.forEach(type => {
@@ -522,9 +523,11 @@ class UIManager {
                 else if (available[type].length) conflicts++;
                 else {
                     const slots = window.repository.getMealSlots(type);
-                    if (type !== 'breakfast' && slots.every(slot =>
-                        window.repository.getComponentsByCategory(type.charAt(0).toUpperCase() + type.slice(1), slot.category).length
-                    )) pairings++;
+                    const groups = slots.map(slot => window.repository.getComponentsByCategory(
+                        type.charAt(0).toUpperCase() + type.slice(1), slot.category
+                    ));
+                    if (groups.some(group => group.length && group.every(component => component.manualOnly === true))) manualOnly++;
+                    else if (type !== 'breakfast' && groups.every(group => group.some(component => !component.manualOnly))) pairings++;
                     else missing++;
                 }
             });
@@ -532,8 +535,9 @@ class UIManager {
         const messages = [];
         if (conflicts) messages.push(`${conflicts} slot(s) left empty to follow the component repetition rules.`);
         if (missing) messages.push(`${missing} slot(s) lack required components for that meal type.`);
-        if (pairings) messages.push(`${pairings} slot(s) have no allowed protein, starch and vegetable combination. Check protein pairings and component meal types.`);
+        if (pairings) messages.push(`${pairings} slot(s) have no allowed protein, starch and vegetable combination. Check protein pairings, component meal types and manual-only settings.`);
         if (weekendOnly) messages.push(`${weekendOnly} slot(s) have only weekend-only combinations available.`);
+        if (manualOnly) messages.push(`${manualOnly} slot(s) need components that are available for automatic planning; manual-only components are excluded.`);
         if (messages.length) messages.push('Add more meals or meal components, then regenerate.');
         return messages.length ? '\n\n' + messages.join('\n') : '';
     }
@@ -586,7 +590,11 @@ class UIManager {
             const item = document.createElement('button');
             item.type = 'button';
             item.className = 'meal-picker-item';
-            item.textContent = component.name + (component.weekendOnly ? ' (Weekend only)' : '');
+            const restrictions = [
+                component.manualOnly ? 'Manual only' : '',
+                component.weekendOnly ? 'Weekend only' : ''
+            ].filter(Boolean);
+            item.textContent = component.name + (restrictions.length ? ` (${restrictions.join(', ')})` : '');
             item.addEventListener('click', () => this.selectMealComponent(component.id));
             list.appendChild(item);
         });
@@ -730,6 +738,7 @@ class UIManager {
                 <span class="badge">${mealTypes.join(', ')}</span>
                 ${categories.map(category => `<span class="badge">${category}</span>`).join('')}
                 <span class="badge">${meal.cuisine}</span>
+                ${meal.manualOnly ? '<span class="badge">Manual only</span>' : ''}
                 ${meal.weekendOnly ? '<span class="badge">Weekend only</span>' : ''}
                 ${categories.includes('Protein') && meal.protein ? `<span class="badge">${meal.protein}</span>` : ''}
                 ${categories.includes('Protein') && (meal.pairings?.starches?.length || meal.pairings?.vegetables?.length) ? '<span class="badge">Pairings restricted</span>' : ''}
@@ -847,6 +856,7 @@ class UIManager {
         this.setMealProtein(meal.protein || '');
         document.getElementById('meal-difficulty').value = meal.difficulty;
         document.getElementById('meal-weekend-only').checked = meal.weekendOnly === true;
+        document.getElementById('meal-manual-only').checked = meal.manualOnly === true;
         document.getElementById('meal-prep-friendly').checked = meal.mealPrepFriendly;
         document.getElementById('meal-prep-days').value = meal.mealPrepDays || 2;
         document.getElementById('meal-prep-days-group').style.display = meal.mealPrepFriendly ? 'grid' : 'none';
@@ -883,6 +893,7 @@ class UIManager {
             protein: document.getElementById('meal-protein').value || document.getElementById('meal-protein-custom').value,
             difficulty: document.getElementById('meal-difficulty').value,
             weekendOnly: document.getElementById('meal-weekend-only').checked,
+            manualOnly: document.getElementById('meal-manual-only').checked,
             mealPrepFriendly: document.getElementById('meal-prep-friendly').checked,
             mealPrepDays: parseInt(document.getElementById('meal-prep-days').value) || 0,
             ingredients: document.getElementById('meal-ingredients').value,

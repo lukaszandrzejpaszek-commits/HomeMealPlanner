@@ -27,6 +27,7 @@ class Repository {
             mealPrepFriendly: mealData.mealPrepFriendly || false,
             mealPrepDays: mealData.mealPrepDays || 0,
             weekendOnly: mealData.weekendOnly === true,
+            manualOnly: mealData.manualOnly === true,
             difficulty: mealData.difficulty || 'Medium',
             ingredients: this.parseList(mealData.ingredients),
             tags: this.parseList(mealData.tags),
@@ -71,6 +72,8 @@ class Repository {
             mealPrepDays: mealData.mealPrepDays || 0,
             weekendOnly: mealData.weekendOnly === undefined
                 ? meals[index].weekendOnly === true : mealData.weekendOnly === true,
+            manualOnly: mealData.manualOnly === undefined
+                ? meals[index].manualOnly === true : mealData.manualOnly === true,
             difficulty: mealData.difficulty || 'Medium',
             ingredients: this.parseList(mealData.ingredients),
             tags: this.parseList(mealData.tags)
@@ -268,9 +271,10 @@ class Repository {
         };
     }
 
-    getPlanningMealsByType(type) {
+    getPlanningMealsByType(type, { automaticOnly = false } = {}) {
         const slots = this.getMealSlots(type);
-        const groups = slots.map(slot => this.getComponentsByCategory(type, slot.category));
+        const groups = slots.map(slot => this.getComponentsByCategory(type, slot.category)
+            .filter(component => !automaticOnly || component.manualOnly !== true));
         if (type.toLowerCase() !== 'breakfast') {
             groups[0] = groups[0].filter(protein => {
                 if (protein.pairings == null) return true;

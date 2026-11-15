@@ -193,6 +193,7 @@ The repeat rule is strict when enabled, so it has an on/off switch rather than a
 - **Clear Plan** removes meals, school-lunch selections, skipped lunches and ordering selections for the open week after confirmation. The week becomes a draft; history and other weeks remain unchanged.
 - **Add or replace** individual components with their **+** buttons
 - Mark a component **Weekend only** to prioritize it in automatic generation on Saturday and Sunday and exclude it on weekdays. Eligible combinations with more weekend-only components take priority; repeat rules and pairings still apply. It can still be selected manually on weekdays.
+- Mark a component **Manual selection only** to exclude it from automatic generation and regeneration while keeping it available in the planner's component picker. This also takes precedence over **Weekend only**.
 - **Choose school lunch per weekday** with the checkbox in each weekday's planner card. Previously saved weekend school lunches can be removed from the planner. Turning school lunch off generates a lunch when possible.
 - **Skip lunch** separately on Saturday or Sunday. Selecting it removes that day's planned lunch and generation leaves the slot empty. Turning it off generates a lunch when possible.
 - **Order food** for lunch, dinner or both on Friday, Saturday and Sunday. Each selection removes the corresponding planned meal; generation leaves it empty and its ingredients are excluded from newly generated shopping lists. Turning it off generates a new meal for that slot when possible.

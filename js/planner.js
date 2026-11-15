@@ -31,9 +31,9 @@ class Planner {
 
     generateWeekPlan() {
         const mealsByType = {
-            breakfast: this.repository.getPlanningMealsByType('Breakfast'),
-            lunch: this.repository.getPlanningMealsByType('Lunch'),
-            dinner: this.repository.getPlanningMealsByType('Dinner')
+            breakfast: this.repository.getPlanningMealsByType('Breakfast', { automaticOnly: true }),
+            lunch: this.repository.getPlanningMealsByType('Lunch', { automaticOnly: true }),
+            dinner: this.repository.getPlanningMealsByType('Dinner', { automaticOnly: true })
         };
 
         const previousPlan = this.getCurrentWeek()?.plan;
@@ -99,7 +99,7 @@ class Planner {
         }
 
         const plan = currentWeek.plan;
-        const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType));
+        const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType), { automaticOnly: true });
 
         this.days.forEach(day => {
             plan[day][mealType] = null;
@@ -140,7 +140,7 @@ class Planner {
                 continue;
             }
 
-            const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType));
+            const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType), { automaticOnly: true });
             dayPlan[mealType] = this.selectBestMeal(meals, plan, dayIndex, mealType);
         }
 
@@ -168,7 +168,7 @@ class Planner {
         const dayPlan = plan[this.days[dayIndex]];
         if (this.isMealExcluded(dayPlan, mealType)) return;
         dayPlan[mealType] = null;
-        const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType));
+        const meals = this.repository.getPlanningMealsByType(this.capitalize(mealType), { automaticOnly: true });
         dayPlan[mealType] = this.selectBestMeal(meals, plan, dayIndex, mealType);
     }
 

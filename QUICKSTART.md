@@ -55,6 +55,7 @@ file:///C:/Users/lpasz/GITHUB/HomeMealPlanner/index.html
 - **Future week**: Select a later week to generate and save a separate plan
 - **Meal components**: Breakfast combines a Breakfast component and fruit; lunch and dinner combine protein, starch and vegetables. Assign the Breakfast category and meal type to components you want in the breakfast slot. Use the **+** buttons to fill a row manually; manual choices can override repeat rules.
 - **Weekend only**: Enable this on a component to prioritize it automatically on Saturday and Sunday and exclude it on weekdays. Eligible combinations with more weekend-only components take priority. Manual weekday selection is still allowed.
+- **Manual selection only**: Enable this on a component to keep it out of automatic planning, including regeneration. It remains available for manual selection, even if it is also marked weekend only.
 - **Multiple meal types**: Assign a component to any combination of breakfast, lunch, and dinner.
 - **Adjust rules**: Go to Rules to toggle rules on/off or adjust the strength of scoring preferences. The repeat rule is strict and has no strength slider.
 - **Vary starches and vegetables**: This scoring preference favors sides used less often in the week, without banning repeats. Adjust its strength or switch it off under Rules.

@@ -51,6 +51,97 @@
         const ruleStub = { getRules: () => [], scoreMealPlacement: () => 1 };
         const pairingPlanner = new window.planner.constructor(pairingStorage, pairingRepo, ruleStub);
 
+        const manualData = {
+            meals: [], recipes: [], 'meal-components': { proteins: [], starches: [], vegetables: [] },
+            settings: { planningStartDay: 'Saturday' }
+        };
+        const manualStorage = {
+            get(key, fallback) { return manualData[key] === undefined ? fallback : structuredClone(manualData[key]); },
+            set(key, value) { manualData[key] = structuredClone(value); }
+        };
+        const manualRepo = new window.repository.constructor(manualStorage);
+        const manualPlanner = new window.planner.constructor(manualStorage, manualRepo, ruleStub);
+        const normalBreakfast = manualRepo.addMeal({ name: 'Toast', mealTypes: ['Breakfast'], categories: ['Breakfast'] });
+        const manualBreakfast = manualRepo.addMeal({
+            name: 'Pancakes', mealTypes: ['Breakfast'], categories: ['Breakfast'], manualOnly: true, weekendOnly: true
+        });
+        const manualFruit = manualRepo.addMeal({
+            name: 'Berries', mealTypes: ['Breakfast'], categories: ['Fruit'], manualOnly: true
+        });
+        manualRepo.addMeal({ name: 'Apple', mealTypes: ['Breakfast'], categories: ['Fruit'] });
+        const normalProtein = manualRepo.addMeal({
+            name: 'Chicken', mealTypes: ['Lunch', 'Dinner'], categories: ['Protein']
+        });
+        const manualProtein = manualRepo.addMeal({
+            name: 'Fish', mealTypes: ['Lunch', 'Dinner'], categories: ['Protein'], manualOnly: true
+        });
+        const manualStarch = manualRepo.addMeal({
+            name: 'Pasta', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'], manualOnly: true
+        });
+        const manualVegetable = manualRepo.addMeal({
+            name: 'Broccoli', mealTypes: ['Lunch', 'Dinner'], categories: ['Vegetables'], manualOnly: true
+        });
+        manualRepo.addMeal({ name: 'Rice', mealTypes: ['Lunch', 'Dinner'], categories: ['Starch'] });
+        manualRepo.addMeal({ name: 'Carrot', mealTypes: ['Lunch', 'Dinner'], categories: ['Vegetables'] });
+        const allAutomatic = plan => Object.values(plan).every(day =>
+            ['breakfast', 'lunch', 'dinner'].every(type =>
+                !day[type] || Object.values(day[type].componentItems).every(item => !item.manualOnly)
+            )
+        );
+        assert(!normalBreakfast.manualOnly && !normalProtein.manualOnly,
+            'Existing and new components must default to automatic planning');
+        assert(manualRepo.getPlanningMealsByType('Breakfast').some(meal =>
+            meal.componentItems.breakfast.id === manualBreakfast.id),
+            'Manual-only components must remain available in manually selected combinations');
+        assert(allAutomatic(manualPlanner.generateWeekPlan()),
+            'Automatic generation must exclude manual-only components in every category, including on weekends');
+        for (const [type, slot, component] of [
+            ['breakfast', 'breakfast', manualBreakfast], ['breakfast', 'fruit', manualFruit],
+            ['lunch', 'protein', manualProtein], ['lunch', 'starch', manualStarch],
+            ['lunch', 'vegetable', manualVegetable]
+        ]) {
+            assert(manualPlanner.setMealComponent(0, type, slot, component.id).componentItems[slot].id === component.id,
+                `Manual selection must allow a manual-only ${slot}`);
+        }
+        const manualCombination = manualRepo.getPlanningMealsByType('Dinner').find(meal =>
+            meal.componentItems.protein.id === manualProtein.id && meal.componentItems.starch.id === manualStarch.id &&
+            meal.componentItems.vegetable.id === manualVegetable.id);
+        assert(manualPlanner.replaceMeal(0, 'dinner', manualCombination.id).componentItems.protein.id === manualProtein.id,
+            'Manual whole-meal replacement must allow manual-only components');
+        assert(allAutomatic(manualPlanner.regenerateDay(0)) &&
+            allAutomatic(manualPlanner.regenerateMealType('lunch')),
+            'Day and meal-type regeneration must exclude manual-only components');
+        manualPlanner.setOrderedMeal(1, 'dinner', true);
+        assert(allAutomatic(manualPlanner.setOrderedMeal(1, 'dinner', false)),
+            'Restoring an ordered slot must not select manual-only components');
+        manualRepo.updateMeal(manualBreakfast.id, { ...manualBreakfast, manualOnly: false });
+        assert(!manualRepo.getMeal(manualBreakfast.id).manualOnly, 'The restriction can be turned off');
+        manualRepo.updateMeal(manualBreakfast.id, { ...manualBreakfast, manualOnly: true });
+        const otherManualUpdates = manualRepo.getMeal(manualBreakfast.id);
+        delete otherManualUpdates.manualOnly;
+        manualRepo.updateMeal(manualBreakfast.id, otherManualUpdates);
+        manualRepo.importMeals(manualRepo.exportMeals());
+        assert(manualRepo.getMeal(manualBreakfast.id).manualOnly,
+            'Unrelated edits and component export/import must preserve the restriction');
+        manualRepo.updateMeal(normalBreakfast.id, { ...normalBreakfast, manualOnly: true });
+        const noAutomaticBreakfast = manualPlanner.generateWeekPlan();
+        assert(Object.values(noAutomaticBreakfast).every(day => !day.breakfast),
+            'Automatic planning must leave breakfast empty if all breakfast components are manual-only');
+        manualRepo.updateMeal(normalProtein.id, {
+            ...normalProtein, pairings: { starches: [manualStarch.id], vegetables: [manualVegetable.id] }
+        });
+        assert(!manualRepo.getPlanningMealsByType('Lunch', { automaticOnly: true }).length &&
+            manualRepo.getPlanningMealsByType('Lunch').length,
+            'Automatic planning must not bypass protein pairings by using manual-only components');
+        manualRepo.saveMealComponents({ proteins: ['Tofu'], starches: [], vegetables: [] });
+        const simpleId = manualRepo.getSimpleComponentId('proteins', 'Tofu');
+        manualRepo.updateSimpleMealComponent(simpleId, {
+            name: 'Tofu', mealTypes: ['Lunch'], categories: ['Protein'], manualOnly: true
+        });
+        assert(manualRepo.getComponent(simpleId).manualOnly &&
+            manualRepo.getComponentsByCategory('Lunch', 'Protein').some(item => item.id === simpleId),
+            'Editing a simple component must persist manual-only while keeping it manually selectable');
+
         const weekendData = {
             meals: [], recipes: [], 'meal-components': { proteins: [], starches: [], vegetables: [] },
             settings: { planningStartDay: 'Saturday' }, rules: [], history: { approved: { plan: 'snapshot' } }
